@@ -1116,14 +1116,12 @@ function buildShortShareSummary() {
 
   var total = (document.getElementById('grand-total') || {}).textContent || '₹0';
 
-  var totalQty = 0;
   var itemLines = [];
   document.querySelectorAll('#items-body tr').forEach(function(row, idx) {
     var qEl = row.querySelector('[data-field="qty"]');
     if (!qEl) return;
     var qty = parseFloat(qEl.value);
     if (isNaN(qty)) qty = 0;
-    totalQty += qty;
 
     var make = String((row.querySelector('[data-field="make"]') || {}).textContent || '').trim();
     var model = String((row.querySelector('[data-field="model"]') || {}).textContent || '').trim();
@@ -1142,18 +1140,12 @@ function buildShortShareSummary() {
     itemLines.push('• ' + label + ' — Qty ' + qtyStr + rt);
   });
 
-  var qtySummary;
-  if (itemLines.length === 0) qtySummary = 'No line items yet';
-  else if (Math.abs(totalQty - Math.round(totalQty)) < 1e-6) qtySummary = 'Total units (sum of qty): ' + Math.round(totalQty);
-  else qtySummary = 'Total units (sum of qty): ' + (Math.round(totalQty * 100) / 100);
-
   var out = [];
   out.push('Shivatronics quotation');
   out.push('Client: ' + raw);
   if (place) out.push('Place: ' + place);
   out.push('Date: ' + date);
   if (subj) out.push('Subject: ' + subj);
-  out.push('Lines: ' + itemLines.length + ' • ' + qtySummary);
   if (itemLines.length) {
     out.push('');
     var maxLines = 8;
@@ -1244,7 +1236,6 @@ function execCommandCopyQuiet(text) {
 }
 async function shareQuotation() {
   var text = buildShortShareSummary();
-  var url = window.location.href;
   toast('Creating PDF…', false);
 
   var pdfBlob;
@@ -1255,13 +1246,13 @@ async function shareQuotation() {
     toast('PDF failed — sharing text only.', false);
     if (typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: 'Shivatronics quotation', text: text, url: url });
+        await navigator.share({ title: 'Shivatronics quotation', text: text });
         toast('Shared (summary only)', true);
       } catch (err) {
-        if (err && err.name !== 'AbortError') copyShareFallback(text + '\n' + url);
+        if (err && err.name !== 'AbortError') copyShareFallback(text);
       }
     } else {
-      copyShareFallback(text + '\n' + url);
+      copyShareFallback(text);
     }
     return;
   }
@@ -1273,7 +1264,7 @@ async function shareQuotation() {
 
   if (typeof navigator.share !== 'function') {
     downloadPdfBlobLocal(pdfBlob, pdfName);
-    copyShareFallback(text + '\n' + url);
+    copyShareFallback(text);
     return;
   }
 
@@ -1282,7 +1273,7 @@ async function shareQuotation() {
     title: 'Shivatronics quotation',
     text: text
   };
-  var payloadText = { title: 'Shivatronics quotation', text: text, url: url };
+  var payloadText = { title: 'Shivatronics quotation', text: text };
 
   if (navigator.canShare && typeof navigator.canShare === 'function') {
     if (!navigator.canShare(payloadFiles)) {
@@ -1292,18 +1283,17 @@ async function shareQuotation() {
         await navigator.share(payloadText);
         toast('Opened share (PDF saved)', true);
       } catch (e2) {
-        if (e2 && e2.name !== 'AbortError') copyShareFallback(text + '\n' + url);
+        if (e2 && e2.name !== 'AbortError') copyShareFallback(text);
       }
       return;
     }
   }
 
   try {
-    var captionText = url ? (text + '\n\n' + url) : text;
-    var captionCopied = await copyToClipboardQuiet(captionText);
+    var captionCopied = await copyToClipboardQuiet(text);
     await navigator.share(payloadFiles);
     if (captionCopied) {
-      toast('PDF shared — summary + link copied. In WhatsApp, paste above the attachment if the caption is empty.', true);
+      toast('PDF shared — summary copied. Paste in WhatsApp if the caption is empty.', true);
     } else {
       toast('Shared with PDF.', true);
     }
@@ -1311,7 +1301,7 @@ async function shareQuotation() {
     if (err && err.name === 'AbortError') return;
     toast('Share cancelled or failed — saving PDF.', false);
     downloadPdfBlobLocal(pdfBlob, pdfName);
-    copyShareFallback(text + '\n' + url);
+    copyShareFallback(text);
   }
 }
 

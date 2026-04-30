@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<!-- Layout viewport locked to desktop width so phones use full A4/table layout (horizontal pan/zoom instead of cramped mobile breakpoints). Desktop browser windows unchanged. -->
-<meta name="viewport" content="width=1200, initial-scale=1, minimum-scale=0.25, maximum-scale=5, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Shivatronics — Quotation Generator</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -136,7 +135,7 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
   margin-bottom: 0;
   flex-shrink: 0;
   table-layout: fixed;
-  min-width: 640px;
+  min-width: 666px;
 }
 .items-table thead { display: table-header-group; }
 .items-table tbody { display: table-row-group; }
@@ -196,7 +195,7 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 .col-desc  { }              /* takes remaining space */
 .col-basic { width:94px; }
 .col-rate  { width:90px; }
-.col-qty   { width:28px; }
+.col-qty   { width:54px; }
 .col-total { width:86px; }
 .col-del   { width:22px; } /* screen-only; column hidden in print */
 
@@ -330,10 +329,10 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
 }
 
 
-/* ── MOBILE / NARROW VIEWPORTS — narrow desktop windows only; phones use locked 1200px viewport ── */
+/* ── MOBILE / NARROW VIEWPORTS (phones & small laptop windows — PDF/share still renders full A4 in capture) ── */
 @media (max-width: 900px) {
   #page-wrapper {
-    padding: 0.5rem;
+    padding: max(0.5rem, env(safe-area-inset-left, 0px)) max(0.5rem, env(safe-area-inset-right, 0px));
     overflow-x: hidden;
   }
   #quotation-page {
@@ -345,26 +344,37 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
     padding-right: calc(var(--pw) * 62 / 794);
     padding-bottom: calc(var(--pw) * 58 / 794);
     background-size: 100% auto;
+    border-radius: 8px;
     box-shadow: 0 4px 22px rgba(0,0,0,0.22);
   }
   #content-area { min-height: 0; }
   #editor {
-    padding: 0.65rem 0.75rem;
+    padding: max(0.65rem, env(safe-area-inset-top, 0px)) max(0.75rem, env(safe-area-inset-right, 0px)) 0.65rem max(0.75rem, env(safe-area-inset-left, 0px));
     align-items: stretch;
+    gap: 0.65rem;
   }
+  #editor h1 {
+    font-size: 0.72rem;
+    letter-spacing: 0.045em;
+  }
+  /* Streamlined toolbar: primary action full-width, utilities in pairs */
   .editor-actions {
     margin-left: 0;
     width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 0.45rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    align-self: stretch;
+  }
+  .editor-actions .btn-add {
+    grid-column: 1 / -1;
   }
   .ctrl-group { flex: 1 1 160px; min-width: 0; max-width: 100%; }
   .ctrl-group .ctrl-wide,
   .ctrl-group .ctrl-subj { width: 100%; max-width: 100%; }
 }
 @media (max-width: 640px) {
-  #editor { padding-bottom: calc(0.65rem + env(safe-area-inset-bottom)); }
+  #editor { padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px)); }
   #editor .ctrl-group input,
   #editor .ctrl-group textarea,
   #login-form input[type="text"],
@@ -372,12 +382,17 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
     font-size: 16px;
   }
   .items-table tbody td input[type="number"] { font-size: 14px; min-height: 28px; }
+  /* Wider swipe area for horizontal table scroll */
+  .items-table-wrap {
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+  }
   .del-row {
     width: 40px;
     height: 40px;
     font-size: 16px;
   }
-  .btn { white-space: normal; text-align: center; line-height: 1.2; padding: 0.5rem 0.65rem; min-height: 44px; }
+  .btn { white-space: normal; text-align: center; line-height: 1.25; padding: 0.52rem 0.68rem; min-height: 44px; }
   body { padding-bottom: env(safe-area-inset-bottom); }
 }
 @media (max-width: 520px) {
@@ -388,7 +403,14 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
   }
   .sign-block { align-self: stretch; max-width: 100%; }
   .meta-row .to-col { max-width: 100%; }
-  .total-box { width: 100%; max-width: 280px; }
+  /* Let long client names wrap on very narrow screens while keeping deliberate line breaks */
+  .to-name {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .total-section { justify-content: stretch; padding: 0 2px; }
+  .total-box { width: 100%; max-width: none; }
   .meta-row {
     flex-direction: column;
     align-items: flex-start;
@@ -408,6 +430,7 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
   #page-wrapper { padding:0; justify-content:flex-start !important; }
   #quotation-page {
     box-shadow: none !important;
+    border-radius: 0 !important;
     width: 210mm !important;
     height: auto !important;
     overflow: visible !important;
@@ -939,7 +962,7 @@ function sanitizeShareFilename(base) {
 var PDF_CAPTURE_CLONE_CSS = [
   '#page-wrapper{padding:1.25rem!important;overflow:visible!important;min-width:820px!important}',
   '#quotation-page{width:794px!important;max-width:794px!important;min-width:794px!important;min-height:1123px!important;height:auto!important;padding:248px 62px 58px!important;box-sizing:border-box!important;background-size:794px 1123px!important;background-repeat:repeat-y!important}',
-  '.items-table-wrap{overflow-x:visible!important}.items-table{min-width:640px!important;table-layout:fixed!important}',
+  '.items-table-wrap{overflow-x:visible!important}.items-table{min-width:666px!important;table-layout:fixed!important}',
   '.items-table tbody td input[type=number]{min-height:28px!important;line-height:normal!important;padding:8px 4px 8px 0!important;box-sizing:border-box!important;overflow:visible!important;-webkit-appearance:none!important;appearance:none!important}',
   '.items-table tbody td.r{padding-top:7px!important;padding-bottom:9px!important;vertical-align:middle!important}',
   '.meta-row{flex-direction:row!important;align-items:flex-start!important;gap:12px!important}',
@@ -1075,16 +1098,71 @@ function buildQuotationPdfBlob() {
   });
 }
 
-/** Short line for WhatsApp/email share alongside PDF */
+/** Rich summary for WhatsApp / email alongside the PDF (client, place, date, lines, qty, total). */
 function buildShortShareSummary() {
   var nameEl = document.getElementById('cl-name');
   var raw = nameEl ? nameEl.value : '';
   raw = raw.trim().split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean).join(' ');
   if (!raw) raw = '(No client)';
+
+  var placeEl = document.getElementById('cl-place');
+  var place = placeEl ? placeEl.value.trim().split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean).join(', ') : '';
+
   var date = (document.getElementById('disp-date') || {}).textContent || '';
   if (!date || date === '—') date = '(No date)';
+
+  var subj = (document.getElementById('q-subject') || {}).value || '';
+  subj = String(subj).trim().split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean).join(' ');
+
   var total = (document.getElementById('grand-total') || {}).textContent || '₹0';
-  return ['Shivatronics quotation', 'Client: ' + raw, 'Date: ' + date, 'Total (incl. GST): ' + total].join('\n');
+
+  var totalQty = 0;
+  var itemLines = [];
+  document.querySelectorAll('#items-body tr').forEach(function(row, idx) {
+    var qEl = row.querySelector('[data-field="qty"]');
+    if (!qEl) return;
+    var qty = parseFloat(qEl.value);
+    if (isNaN(qty)) qty = 0;
+    totalQty += qty;
+
+    var make = String((row.querySelector('[data-field="make"]') || {}).textContent || '').trim();
+    var model = String((row.querySelector('[data-field="model"]') || {}).textContent || '').trim();
+    var desc = String((row.querySelector('[data-field="desc"]') || {}).textContent || '').trim();
+    var label = make || model ? [make, model].filter(Boolean).join(' ').trim() : '';
+    if (!label && desc) {
+      label = desc.length > 48 ? desc.slice(0, 45) + '…' : desc;
+    }
+    if (!label) label = 'Item ' + (idx + 1);
+
+    var rt = '';
+    var totCell = row.querySelector('td.r.bold[id^="rowtotal-"]');
+    if (totCell && totCell.textContent) rt = ' — ' + totCell.textContent.trim();
+
+    var qtyStr = (qty % 1 === 0) ? String(Math.round(qty)) : String(qty);
+    itemLines.push('• ' + label + ' — Qty ' + qtyStr + rt);
+  });
+
+  var qtySummary;
+  if (itemLines.length === 0) qtySummary = 'No line items yet';
+  else if (Math.abs(totalQty - Math.round(totalQty)) < 1e-6) qtySummary = 'Total units (sum of qty): ' + Math.round(totalQty);
+  else qtySummary = 'Total units (sum of qty): ' + (Math.round(totalQty * 100) / 100);
+
+  var out = [];
+  out.push('Shivatronics quotation');
+  out.push('Client: ' + raw);
+  if (place) out.push('Place: ' + place);
+  out.push('Date: ' + date);
+  if (subj) out.push('Subject: ' + subj);
+  out.push('Lines: ' + itemLines.length + ' • ' + qtySummary);
+  if (itemLines.length) {
+    out.push('');
+    var maxLines = 8;
+    itemLines.slice(0, maxLines).forEach(function(L) { out.push(L); });
+    if (itemLines.length > maxLines) out.push('… +' + (itemLines.length - maxLines) + ' more lines');
+    out.push('');
+  }
+  out.push('Grand total (incl. GST): ' + total);
+  return out.join('\n');
 }
 
 function downloadPdfBlobLocal(blob, filename) {

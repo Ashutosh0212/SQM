@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- Layout viewport locked to desktop width so phones use full A4/table layout (horizontal pan/zoom instead of cramped mobile breakpoints). Desktop browser windows unchanged. -->
+<meta name="viewport" content="width=1200, initial-scale=1, minimum-scale=0.25, maximum-scale=5, viewport-fit=cover">
 <title>Shivatronics — Quotation Generator</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -43,7 +44,6 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 .btn-print { background:#475569; color:white; } .btn-print:hover { background:#334155; }
 .btn-share  { background:#7c3aed; color:white; } .btn-share:hover  { background:#6d28d9; }
 .btn-clear { background:#dc2626; color:white; font-size:0.7rem; } .btn-clear:hover { background:#b91c1c; }
-.share-mobile-only { display: none !important; }
 
 /* ── PAGE WRAPPER ── */
 #page-wrapper { display:flex; justify-content:center; padding:1.25rem; }
@@ -314,10 +314,7 @@ html.pdf-capture-a4 .del-row {
 }
 
 
-/* ── MOBILE / NARROW VIEWPORTS ─────────────────────────── */
-@media (max-width: 768px) {
-  .share-mobile-only { display: inline-flex !important; align-items: center; justify-content: center; }
-}
+/* ── MOBILE / NARROW VIEWPORTS — narrow desktop windows only; phones use locked 1200px viewport ── */
 @media (max-width: 900px) {
   #page-wrapper {
     padding: 0.5rem;
@@ -543,7 +540,7 @@ html.pdf-capture-a4 .del-row {
   <div class="ctrl-group"><label>Subject (optional)</label><textarea id="q-subject" rows="2" placeholder="Supply of Air Conditioners" class="ctrl-subj"></textarea></div>
   <div class="editor-actions">
     <button class="btn btn-add"   onclick="addRow()">+ Add Item</button>
-    <button type="button" class="btn btn-share share-mobile-only" onclick="shareQuotation()">Share</button>
+    <button type="button" class="btn btn-share" onclick="shareQuotation()">Share</button>
     <button class="btn btn-print" onclick="window.print()">&#128438; Print</button>
     <button class="btn btn-clear" onclick="clearAll()">&#10005; Reset</button>
     <button type="button" class="btn btn-print" onclick="logout()">Sign out</button>
@@ -918,6 +915,18 @@ function sanitizeShareFilename(base) {
   return String(base).replace(/[^a-zA-Z0-9._\- ]+/g, '_').trim().slice(0, 80) || 'Quotation';
 }
 
+/** Injected only into html2canvas’ cloned document — forces A4/desktop layout regardless of physical phone width. */
+var PDF_CAPTURE_CLONE_CSS = [
+  '#page-wrapper{padding:1.25rem!important;overflow:visible!important;min-width:820px!important}',
+  '#quotation-page{width:794px!important;max-width:794px!important;min-width:794px!important;min-height:1123px!important;height:auto!important;padding:248px 62px 58px!important;box-sizing:border-box!important;background-size:794px 1123px!important;background-repeat:repeat-y!important}',
+  '.items-table-wrap{overflow-x:visible!important}.items-table{min-width:640px!important;table-layout:fixed!important}',
+  '.meta-row{flex-direction:row!important;align-items:flex-start!important;gap:12px!important}',
+  '.meta-row .to-col{max-width:84%!important}.date-block{text-align:right!important}',
+  '.footer-row{flex-direction:row!important;align-items:flex-end!important;gap:0!important}',
+  '.sign-block{align-self:auto!important;max-width:none!important}.total-box{width:220px!important;max-width:none!important}',
+  '.items-table col.del-col,.items-table thead th.del-col,.items-table tbody td.del-col{display:none!important;visibility:collapse!important;width:0!important;min-width:0!important;padding:0!important;border-width:0!important}'
+].join('');
+
 /** Rasterise quotation into A4-ish PDF Blob (same pipeline as legacy download). */
 function buildQuotationPdfBlob() {
   return new Promise(function(resolve, reject) {
@@ -934,14 +943,32 @@ function buildQuotationPdfBlob() {
       root.classList.remove('pdf-capture', 'pdf-capture-a4');
     }
 
+    function injectCloneCaptureStyles(doc) {
+      if (!doc || !doc.head) return;
+      var st = doc.createElement('style');
+      st.setAttribute('type', 'text/css');
+      st.appendChild(doc.createTextNode(PDF_CAPTURE_CLONE_CSS));
+      doc.head.appendChild(st);
+    }
+
     function runCanvas() {
-        html2canvas(page, {
+      /* html2canvas defaults windowWidth to innerWidth — on phones nested media queries still target a narrow iframe; widen explicitly. */
+      var winW = Math.max(window.innerWidth || 0, 1400);
+      var winH = Math.max(window.innerHeight || 0, Math.ceil(page.getBoundingClientRect().height) + 400, 2400);
+      html2canvas(page, {
           scale: 2,
           useCORS: true,
           allowTaint: false,
           letterRendering: true,
           logging: false,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          windowWidth: winW,
+          windowHeight: winH,
+          scrollX: 0,
+          scrollY: 0,
+          onclone: function(clonedDoc) {
+            injectCloneCaptureStyles(clonedDoc);
+          }
         }).then(function(canvas) {
           endCaptureClasses();
           try {
@@ -951,16 +978,22 @@ function buildQuotationPdfBlob() {
             var pdfH = pdf.internal.pageSize.getHeight();
             var cw = canvas.width;
             var ch = canvas.height;
-            /* Match PDF page splits to rendered sheet width so A4 lines up on phone + desktop */
-            var logicalPx = Math.round(page.getBoundingClientRect().width) || 794;
-            if (logicalPx < 200) logicalPx = 794;
-            var sliceH = Math.round(1123 * (cw / logicalPx));
-            if (sliceH < 16) sliceH = ch;
-            var firstPage = true;
-            for (var srcY = 0; srcY < ch; srcY += sliceH) {
-              if (!firstPage) pdf.addPage();
-              firstPage = false;
-              var cropH = Math.min(sliceH, ch - srcY);
+            if (cw < 16 || ch < 16) throw new Error('pdf-canvas-empty');
+            /*
+             * Lock raster → PDF geometry to A4 aspect (pdfW:pdfH). Slice boundaries follow
+             * exact page height in px (cw * pdfH / pdfW) with cumulative rounding so each slab’s
+             * pixel aspect matches display mm (displayH = pdfW * cropH/cw) — no stretch/shrink.
+             */
+            var slicePxExact = (cw * pdfH) / pdfW;
+            var srcY = 0;
+            var sliceIndex = 0;
+            while (srcY < ch) {
+              if (sliceIndex > 0) pdf.addPage();
+              var nextY = Math.min(Math.round(slicePxExact * (sliceIndex + 1)), ch);
+              var cropH = nextY - srcY;
+              if (cropH <= 0) break;
+              sliceIndex++;
+
               var slab = document.createElement('canvas');
               slab.width = cw;
               slab.height = cropH;
@@ -969,8 +1002,10 @@ function buildQuotationPdfBlob() {
               sctx.fillRect(0, 0, cw, cropH);
               sctx.drawImage(canvas, 0, srcY, cw, cropH, 0, 0, cw, cropH);
               var sliceImg = slab.toDataURL('image/png');
-              var slicePdfH = pdfH * (cropH / sliceH);
-              pdf.addImage(sliceImg, 'PNG', 0, 0, pdfW, slicePdfH);
+              var displayW = pdfW;
+              var displayH = (cropH / cw) * pdfW;
+              pdf.addImage(sliceImg, 'PNG', 0, 0, displayW, displayH);
+              srcY = nextY;
             }
             var blob = pdf.output('blob');
             resolve(blob);

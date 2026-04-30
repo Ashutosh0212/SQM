@@ -164,13 +164,15 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 .items-table tbody td.wrap { vertical-align:top; white-space:normal; word-break:break-word; overflow-wrap:anywhere; }
 .items-table tbody td.bold { font-weight:700; }
 
-/* Number inputs — right-aligned, no spin buttons */
+/* Number inputs — right-aligned, no spin buttons (extra vertical room avoids html2canvas clipping digits) */
 .items-table tbody td input[type="number"] {
   width:100%; min-width:0; border:none; background:transparent;
   font-family:'Inter',sans-serif; font-size:10px; color:#0f172a;
-  outline:none; padding:0 1px 0 0; text-align:right;
-  line-height:1.35;
+  outline:none; padding:4px 4px 4px 0; text-align:right;
+  line-height:1.5; min-height:22px; box-sizing:border-box;
+  overflow:visible;
   -moz-appearance:textfield;
+  -webkit-appearance:none; appearance:none;
 }
 .items-table tbody td input[type="number"]::-webkit-outer-spin-button,
 .items-table tbody td input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; }
@@ -312,6 +314,15 @@ html.pdf-capture-a4 .del-row {
   min-height: 0 !important;
   font-size: 12px !important;
 }
+html.pdf-capture-a4 .items-table tbody td input[type="number"] {
+  min-height: 24px !important;
+  line-height: 1.5 !important;
+  padding: 6px 4px 6px 0 !important;
+  overflow: visible !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  box-sizing: border-box !important;
+}
 
 
 /* ── MOBILE / NARROW VIEWPORTS — narrow desktop windows only; phones use locked 1200px viewport ── */
@@ -355,7 +366,7 @@ html.pdf-capture-a4 .del-row {
   #login-form input[type="password"] {
     font-size: 16px;
   }
-  .items-table tbody td input[type="number"] { font-size: 14px; }
+  .items-table tbody td input[type="number"] { font-size: 14px; min-height: 28px; }
   .del-row {
     width: 40px;
     height: 40px;
@@ -920,6 +931,7 @@ var PDF_CAPTURE_CLONE_CSS = [
   '#page-wrapper{padding:1.25rem!important;overflow:visible!important;min-width:820px!important}',
   '#quotation-page{width:794px!important;max-width:794px!important;min-width:794px!important;min-height:1123px!important;height:auto!important;padding:248px 62px 58px!important;box-sizing:border-box!important;background-size:794px 1123px!important;background-repeat:repeat-y!important}',
   '.items-table-wrap{overflow-x:visible!important}.items-table{min-width:640px!important;table-layout:fixed!important}',
+  '.items-table tbody td input[type=number]{min-height:24px!important;line-height:1.5!important;padding:6px 4px 6px 0!important;box-sizing:border-box!important;overflow:visible!important;-webkit-appearance:none!important;appearance:none!important}',
   '.meta-row{flex-direction:row!important;align-items:flex-start!important;gap:12px!important}',
   '.meta-row .to-col{max-width:84%!important}.date-block{text-align:right!important}',
   '.footer-row{flex-direction:row!important;align-items:flex-end!important;gap:0!important}',

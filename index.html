@@ -1207,6 +1207,41 @@ function legacyCopyText(text) {
   }
 }
 
+/**
+ * Copy without toast — used together with PDF share (WhatsApp often ignores share text when a file is attached).
+ */
+function copyToClipboardQuiet(text) {
+  if (!text || !String(text).trim()) return Promise.resolve(false);
+  var s = String(text);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(s).then(function() { return true; }).catch(function() {
+      return Promise.resolve(execCommandCopyQuiet(s));
+    });
+  }
+  return Promise.resolve(execCommandCopyQuiet(s));
+}
+
+function execCommandCopyQuiet(text) {
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '0';
+    ta.style.top = '0';
+    ta.style.opacity = '0';
+    ta.style.pointerEvents = 'none';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    var ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return !!ok;
+  } catch (e) {
+    return false;
+  }
+}
 async function shareQuotation() {
   var text = buildShortShareSummary();
   var url = window.location.href;
@@ -1264,8 +1299,14 @@ async function shareQuotation() {
   }
 
   try {
+    var captionText = url ? (text + '\n\n' + url) : text;
+    var captionCopied = await copyToClipboardQuiet(captionText);
     await navigator.share(payloadFiles);
-    toast('Shared with PDF', true);
+    if (captionCopied) {
+      toast('PDF shared — summary + link copied. In WhatsApp, paste above the attachment if the caption is empty.', true);
+    } else {
+      toast('Shared with PDF.', true);
+    }
   } catch (err) {
     if (err && err.name === 'AbortError') return;
     toast('Share cancelled or failed — saving PDF.', false);

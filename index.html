@@ -237,6 +237,16 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 }
 .del-row:hover { background:#fecaca; color:#b91c1c; }
 
+/* Hide Actions column while rasterising quotation to PDF (share) */
+html.pdf-capture .items-table col.del-col,
+html.pdf-capture .items-table thead th.del-col,
+html.pdf-capture .items-table tbody td.del-col {
+  display: none !important;
+  visibility: collapse !important;
+  width: 0 !important; min-width: 0 !important;
+  padding: 0 !important; border-width: 0 !important;
+}
+
 
 /* ── MOBILE / NARROW VIEWPORTS ─────────────────────────── */
 @media (max-width: 768px) {
@@ -432,6 +442,8 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
   line-height: 1.45;
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -836,6 +848,83 @@ function clearAll() {
   updateMeta(); calcGrand();
 }
 
+function sanitizeShareFilename(base) {
+  return String(base).replace(/[^a-zA-Z0-9._\- ]+/g, '_').trim().slice(0, 80) || 'Quotation';
+}
+
+/** Rasterise quotation into A4-ish PDF Blob (same pipeline as legacy download). */
+function buildQuotationPdfBlob() {
+  return new Promise(function(resolve, reject) {
+    var root = document.documentElement;
+    var page = document.getElementById('quotation-page');
+    if (!page || typeof html2canvas === 'undefined') {
+      reject(new Error('pdf-lib-missing'));
+      return;
+    }
+    root.classList.add('pdf-capture');
+    window.scrollTo(0, 0);
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        html2canvas(page, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          letterRendering: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        }).then(function(canvas) {
+          root.classList.remove('pdf-capture');
+          try {
+            var jsPDF = window.jspdf.jsPDF;
+            var pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+            var pdfW = pdf.internal.pageSize.getWidth();
+            var pdfH = pdf.internal.pageSize.getHeight();
+            var cw = canvas.width;
+            var ch = canvas.height;
+            var sliceH = Math.round(1123 * (cw / 794));
+            if (sliceH < 16) sliceH = ch;
+            var firstPage = true;
+            for (var srcY = 0; srcY < ch; srcY += sliceH) {
+              if (!firstPage) pdf.addPage();
+              firstPage = false;
+              var cropH = Math.min(sliceH, ch - srcY);
+              var slab = document.createElement('canvas');
+              slab.width = cw;
+              slab.height = cropH;
+              var sctx = slab.getContext('2d');
+              sctx.fillStyle = '#ffffff';
+              sctx.fillRect(0, 0, cw, cropH);
+              sctx.drawImage(canvas, 0, srcY, cw, cropH, 0, 0, cw, cropH);
+              var sliceImg = slab.toDataURL('image/png');
+              var slicePdfH = pdfH * (cropH / sliceH);
+              pdf.addImage(sliceImg, 'PNG', 0, 0, pdfW, slicePdfH);
+            }
+            var blob = pdf.output('blob');
+            resolve(blob);
+          } catch (e) {
+            reject(e);
+          }
+        }).catch(function(err) {
+          root.classList.remove('pdf-capture');
+          reject(err);
+        });
+      });
+    });
+  });
+}
+
+function downloadPdfBlobLocal(blob, filename) {
+  var u = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = u;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(u); }, 2500);
+}
+
 function buildShareSummary() {
   var nameEl = document.getElementById('cl-name');
   var raw = nameEl ? nameEl.value : '';
@@ -888,24 +977,71 @@ function legacyCopyText(text) {
   }
 }
 
-function shareQuotation() {
+async function shareQuotation() {
   var text = buildShareSummary();
   var url = window.location.href;
-  var sharePayload = {
-    title: 'Shivatronics quotation',
-    text: text,
-    url: url
-  };
-  if (typeof navigator.share === 'function') {
-    navigator.share(sharePayload).then(function() {
-      toast('Shared', true);
-    }).catch(function(err) {
-      if (err && err.name === 'AbortError') return;
+  toast('Creating PDF…', false);
+
+  var pdfBlob;
+  try {
+    pdfBlob = await buildQuotationPdfBlob();
+  } catch (e) {
+    console.error(e);
+    toast('PDF failed — sharing text only.', false);
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'Shivatronics quotation', text: text, url: url });
+        toast('Shared (summary only)', true);
+      } catch (err) {
+        if (err && err.name !== 'AbortError') copyShareFallback(text + '\n' + url);
+      }
+    } else {
       copyShareFallback(text + '\n' + url);
-    });
+    }
     return;
   }
-  copyShareFallback(text + '\n' + url);
+
+  var namePart = sanitizeShareFilename((document.getElementById('cl-name').value.trim() || 'Quotation').replace(/[\r\n]+/g, ' '));
+  var datePart = document.getElementById('q-date').value || 'draft';
+  var pdfName = 'Shivatronics_Quote_' + namePart + '_' + datePart + '.pdf';
+  var pdfFile = new File([pdfBlob], pdfName, { type: 'application/pdf', lastModified: Date.now() });
+
+  if (typeof navigator.share !== 'function') {
+    downloadPdfBlobLocal(pdfBlob, pdfName);
+    copyShareFallback(text + '\n' + url);
+    return;
+  }
+
+  var payloadFiles = {
+    files: [pdfFile],
+    title: 'Shivatronics quotation',
+    text: text
+  };
+  var payloadText = { title: 'Shivatronics quotation', text: text, url: url };
+
+  if (navigator.canShare && typeof navigator.canShare === 'function') {
+    if (!navigator.canShare(payloadFiles)) {
+      toast('Device cannot attach PDF to share — downloading file.', false);
+      downloadPdfBlobLocal(pdfBlob, pdfName);
+      try {
+        await navigator.share(payloadText);
+        toast('Opened share (PDF saved)', true);
+      } catch (e2) {
+        if (e2 && e2.name !== 'AbortError') copyShareFallback(text + '\n' + url);
+      }
+      return;
+    }
+  }
+
+  try {
+    await navigator.share(payloadFiles);
+    toast('Shared with PDF', true);
+  } catch (err) {
+    if (err && err.name === 'AbortError') return;
+    toast('Share cancelled or failed — saving PDF.', false);
+    downloadPdfBlobLocal(pdfBlob, pdfName);
+    copyShareFallback(text + '\n' + url);
+  }
 }
 
 function fmt(n) {

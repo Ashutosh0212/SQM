@@ -314,10 +314,15 @@ html.pdf-capture-a4 .del-row {
   min-height: 0 !important;
   font-size: 12px !important;
 }
+html.pdf-capture-a4 .items-table tbody td.r {
+  padding-top: 7px !important;
+  padding-bottom: 9px !important;
+  vertical-align: middle !important;
+}
 html.pdf-capture-a4 .items-table tbody td input[type="number"] {
-  min-height: 24px !important;
-  line-height: 1.5 !important;
-  padding: 6px 4px 6px 0 !important;
+  min-height: 28px !important;
+  line-height: normal !important;
+  padding: 8px 4px 8px 0 !important;
   overflow: visible !important;
   -webkit-appearance: none !important;
   appearance: none !important;
@@ -654,6 +659,10 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
 <script>
 
 
+/** Share/PDF raster — JPEG + moderate scale keeps single-page PDFs small; PNG slices were routinely multi‑MB. */
+var PDF_RASTER_SCALE = 1.75;
+var PDF_JPEG_QUALITY = 0.88;
+
 var rowId = 0;
 var quotationAppInitialized = false;
 
@@ -931,13 +940,37 @@ var PDF_CAPTURE_CLONE_CSS = [
   '#page-wrapper{padding:1.25rem!important;overflow:visible!important;min-width:820px!important}',
   '#quotation-page{width:794px!important;max-width:794px!important;min-width:794px!important;min-height:1123px!important;height:auto!important;padding:248px 62px 58px!important;box-sizing:border-box!important;background-size:794px 1123px!important;background-repeat:repeat-y!important}',
   '.items-table-wrap{overflow-x:visible!important}.items-table{min-width:640px!important;table-layout:fixed!important}',
-  '.items-table tbody td input[type=number]{min-height:24px!important;line-height:1.5!important;padding:6px 4px 6px 0!important;box-sizing:border-box!important;overflow:visible!important;-webkit-appearance:none!important;appearance:none!important}',
+  '.items-table tbody td input[type=number]{min-height:28px!important;line-height:normal!important;padding:8px 4px 8px 0!important;box-sizing:border-box!important;overflow:visible!important;-webkit-appearance:none!important;appearance:none!important}',
+  '.items-table tbody td.r{padding-top:7px!important;padding-bottom:9px!important;vertical-align:middle!important}',
   '.meta-row{flex-direction:row!important;align-items:flex-start!important;gap:12px!important}',
   '.meta-row .to-col{max-width:84%!important}.date-block{text-align:right!important}',
   '.footer-row{flex-direction:row!important;align-items:flex-end!important;gap:0!important}',
   '.sign-block{align-self:auto!important;max-width:none!important}.total-box{width:220px!important;max-width:none!important}',
   '.items-table col.del-col,.items-table thead th.del-col,.items-table tbody td.del-col{display:none!important;visibility:collapse!important;width:0!important;min-width:0!important;padding:0!important;border-width:0!important}'
 ].join('');
+
+/** html2canvas often clips native number inputs; the clone uses plain text for a clean raster. */
+function flattenNumberInputsForPdf(doc) {
+  var root = doc.getElementById('quotation-page');
+  if (!root) return;
+  var inputs = root.querySelectorAll('input[type="number"]');
+  for (var i = 0; i < inputs.length; i++) {
+    var inp = inputs[i];
+    var td = inp.parentNode;
+    if (!td || td.nodeName !== 'TD') continue;
+    var span = doc.createElement('span');
+    var v = inp.value != null ? String(inp.value).trim() : '';
+    if (v === '') v = String(inp.placeholder || '').trim();
+    span.textContent = v;
+    span.setAttribute('data-pdf-num-snapshot', '1');
+    span.style.cssText =
+      'display:block;width:100%;text-align:right;white-space:nowrap;overflow:visible;' +
+      "font-family:'Inter',sans-serif;font-size:10px;line-height:1.65;" +
+      'color:#0f172a;font-variant-numeric:tabular-nums;font-weight:400;' +
+      'padding:5px 4px 6px 0;margin:0;box-sizing:border-box;';
+    td.replaceChild(span, inp);
+  }
+}
 
 /** Rasterise quotation into A4-ish PDF Blob (same pipeline as legacy download). */
 function buildQuotationPdfBlob() {
@@ -968,7 +1001,7 @@ function buildQuotationPdfBlob() {
       var winW = Math.max(window.innerWidth || 0, 1400);
       var winH = Math.max(window.innerHeight || 0, Math.ceil(page.getBoundingClientRect().height) + 400, 2400);
       html2canvas(page, {
-          scale: 2,
+          scale: PDF_RASTER_SCALE,
           useCORS: true,
           allowTaint: false,
           letterRendering: true,
@@ -980,12 +1013,13 @@ function buildQuotationPdfBlob() {
           scrollY: 0,
           onclone: function(clonedDoc) {
             injectCloneCaptureStyles(clonedDoc);
+            flattenNumberInputsForPdf(clonedDoc);
           }
         }).then(function(canvas) {
           endCaptureClasses();
           try {
             var jsPDF = window.jspdf.jsPDF;
-            var pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+            var pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
             var pdfW = pdf.internal.pageSize.getWidth();
             var pdfH = pdf.internal.pageSize.getHeight();
             var cw = canvas.width;
@@ -1013,10 +1047,10 @@ function buildQuotationPdfBlob() {
               sctx.fillStyle = '#ffffff';
               sctx.fillRect(0, 0, cw, cropH);
               sctx.drawImage(canvas, 0, srcY, cw, cropH, 0, 0, cw, cropH);
-              var sliceImg = slab.toDataURL('image/png');
+              var sliceImg = slab.toDataURL('image/jpeg', PDF_JPEG_QUALITY);
               var displayW = pdfW;
               var displayH = (cropH / cw) * pdfW;
-              pdf.addImage(sliceImg, 'PNG', 0, 0, displayW, displayH);
+              pdf.addImage(sliceImg, 'JPEG', 0, 0, displayW, displayH);
               srcY = nextY;
             }
             var blob = pdf.output('blob');

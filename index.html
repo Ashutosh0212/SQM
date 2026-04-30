@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Shivatronics — Quotation Generator</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 * { box-sizing:border-box; margin:0; padding:0; }
 body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
@@ -28,6 +26,10 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
   padding:0.34rem 0.58rem; outline:none; transition:border-color 0.15s;
 }
 .ctrl-group input:focus, .ctrl-group textarea:focus { border-color:#3b82f6; }
+.ctrl-group .ctrl-wide { width: 280px; max-width: 100%; }
+.ctrl-group .ctrl-narrow { width: 108px; max-width: 100%; }
+.ctrl-group .ctrl-date { width: 138px; max-width: 100%; }
+.ctrl-group .ctrl-subj { width: 195px; max-width: 100%; }
 .ctrl-group textarea {
   background:#243447; border:1.5px solid #334155; border-radius:5px;
   color:#e2e8f0; font-family:'Inter',sans-serif; font-size:0.78rem;
@@ -37,9 +39,11 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 .editor-actions { display:flex; gap:0.45rem; align-items:flex-end; margin-left:auto; }
 .btn { padding:0.44rem 0.9rem; border-radius:6px; font-family:'Inter',sans-serif; font-size:0.77rem; font-weight:600; cursor:pointer; border:none; transition:all 0.15s; white-space:nowrap; }
 .btn-add   { background:#16a34a; color:white; } .btn-add:hover   { background:#15803d; }
-.btn-pdf   { background:#2563eb; color:white; } .btn-pdf:hover   { background:#1d4ed8; }
+.btn-login { background:#2563eb; color:white; } .btn-login:hover { background:#1d4ed8; }
 .btn-print { background:#475569; color:white; } .btn-print:hover { background:#334155; }
+.btn-share  { background:#7c3aed; color:white; } .btn-share:hover  { background:#6d28d9; }
 .btn-clear { background:#dc2626; color:white; font-size:0.7rem; } .btn-clear:hover { background:#b91c1c; }
+.share-mobile-only { display: none !important; }
 
 /* ── PAGE WRAPPER ── */
 #page-wrapper { display:flex; justify-content:center; padding:1.25rem; }
@@ -116,15 +120,23 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
   white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; line-height:1.4; }
 .subject-line strong { font-weight:700; }
 
-/* ── ITEMS TABLE ──
-   Wider numeric cols + overflow:visible so PDF capture does not clip amounts. */
+/* ── ITEMS TABLE ── */
+.items-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  margin-bottom: 5px;
+  flex-shrink: 0;
+}
 .items-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 10px;
-  margin-bottom: 5px;
+  margin-bottom: 0;
   flex-shrink: 0;
-  table-layout: fixed;   /* enforce column widths strictly */
+  table-layout: fixed;
+  min-width: 640px;
 }
 .items-table thead { display: table-header-group; }
 .items-table tbody { display: table-row-group; }
@@ -184,7 +196,7 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 .col-rate  { width:90px; }
 .col-qty   { width:28px; }
 .col-total { width:86px; }
-.col-del   { width:22px; } /* screen-only; column hidden in print/PDF */
+.col-del   { width:22px; } /* screen-only; column hidden in print */
 
 /* ── TOTALS ── */
 .total-section { display:flex; justify-content:flex-end; margin-bottom:10px; flex-shrink:0; }
@@ -215,7 +227,7 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 .sign-block { text-align:center; font-size:9.5px; color:#334155; }
 .sign-line { border-top:1px solid #64748b; width:140px; margin:22px auto 3px; padding-top:3px; }
 
-/* ── DELETE BUTTON (hidden with column in print / PDF capture) ── */
+/* ── DELETE BUTTON (Actions column hidden when printing) ── */
 .del-row {
   background:none; border:none; cursor:pointer;
   color:#dc2626; font-size:12px; font-weight:700; line-height:1;
@@ -225,14 +237,75 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 }
 .del-row:hover { background:#fecaca; color:#b91c1c; }
 
-/* ── PDF capture — hide Actions column (same as print) ── */
-html.pdf-capture .items-table col.del-col,
-html.pdf-capture .items-table thead th.del-col,
-html.pdf-capture .items-table tbody td.del-col {
-  display: none !important;
-  visibility: collapse !important;
-  width: 0 !important; min-width: 0 !important;
-  padding: 0 !important; border-width: 0 !important;
+
+/* ── MOBILE / NARROW VIEWPORTS ─────────────────────────── */
+@media (max-width: 768px) {
+  .share-mobile-only { display: inline-flex !important; align-items: center; justify-content: center; }
+}
+@media (max-width: 900px) {
+  #page-wrapper {
+    padding: 0.5rem;
+    overflow-x: hidden;
+  }
+  #quotation-page {
+    --pw: min(794px, calc(100vw - 1rem));
+    width: var(--pw);
+    min-height: calc(var(--pw) * 1123 / 794);
+    padding-top: calc(var(--pw) * 248 / 794);
+    padding-left: calc(var(--pw) * 62 / 794);
+    padding-right: calc(var(--pw) * 62 / 794);
+    padding-bottom: calc(var(--pw) * 58 / 794);
+    background-size: 100% auto;
+    box-shadow: 0 4px 22px rgba(0,0,0,0.22);
+  }
+  #content-area { min-height: 0; }
+  #editor {
+    padding: 0.65rem 0.75rem;
+    align-items: stretch;
+  }
+  .editor-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+  .ctrl-group { flex: 1 1 160px; min-width: 0; max-width: 100%; }
+  .ctrl-group .ctrl-wide,
+  .ctrl-group .ctrl-subj { width: 100%; max-width: 100%; }
+}
+@media (max-width: 640px) {
+  #editor { padding-bottom: calc(0.65rem + env(safe-area-inset-bottom)); }
+  #editor .ctrl-group input,
+  #editor .ctrl-group textarea,
+  #login-form input[type="text"],
+  #login-form input[type="password"] {
+    font-size: 16px;
+  }
+  .items-table tbody td input[type="number"] { font-size: 14px; }
+  .del-row {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  .btn { white-space: normal; text-align: center; line-height: 1.2; padding: 0.5rem 0.65rem; min-height: 44px; }
+  body { padding-bottom: env(safe-area-inset-bottom); }
+}
+@media (max-width: 520px) {
+  .footer-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .sign-block { align-self: stretch; max-width: 100%; }
+  .meta-row .to-col { max-width: 100%; }
+  .total-box { width: 100%; max-width: 280px; }
+  .meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .date-block { text-align: left; }
 }
 
 /* ── PRINT ── */
@@ -287,6 +360,12 @@ html.pdf-capture .items-table tbody td.del-col {
 #toast { position:fixed; bottom:1.5rem; right:1.5rem; background:#1e3a5f; color:white; padding:0.5rem 0.85rem; border-radius:6px; font-size:0.76rem; font-weight:500; transform:translateY(80px); opacity:0; transition:all 0.3s; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,0.2); }
 #toast.show { transform:translateY(0); opacity:1; }
 #toast.ok { background:#15803d; }
+@media (max-width: 640px) {
+  #toast {
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+  }
+}
 
 /* ── LOGIN (client-side gate — see script header for caveats on GitHub Pages) ── */
 #login-screen {
@@ -295,7 +374,8 @@ html.pdf-capture .items-table tbody td.del-col {
               linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #0f172a 100%);
   display: flex; align-items: center; justify-content: center;
   z-index: 10001;
-  padding: 1.5rem;
+  padding: max(1.5rem, env(safe-area-inset-top, 0px)) max(1.5rem, env(safe-area-inset-right, 0px))
+           max(1.5rem, env(safe-area-inset-bottom, 0px)) max(1.5rem, env(safe-area-inset-left, 0px));
 }
 #login-screen[hidden] { display: none !important; }
 .login-card {
@@ -368,7 +448,7 @@ html.pdf-capture .items-table tbody td.del-col {
         <input type="password" id="login-pass" name="login-pass" autocomplete="current-password" required>
       </label>
       <p id="login-err"></p>
-      <button type="submit" class="btn btn-submit btn-pdf">Sign in</button>
+      <button type="submit" class="btn btn-submit btn-login">Sign in</button>
     </form>
     <p class="login-note">Purely client-side unlock: use a strong password and replace the login hash before publishing.</p>
   </div>
@@ -379,13 +459,13 @@ html.pdf-capture .items-table tbody td.del-col {
 <!-- ═══ EDITOR BAR ═══ -->
 <div id="editor">
   <h1>Shivatronics &#8212; Quotation Builder</h1>
-  <div class="ctrl-group"><label>To (Client)</label><textarea id="cl-name" rows="3" placeholder="Patil Rail Infrastructure Pvt Ltd" style="width:280px;"></textarea></div>
-  <div class="ctrl-group"><label>City / Place</label><textarea id="cl-place" rows="2" placeholder="Chandrapur" style="width:108px;"></textarea></div>
-  <div class="ctrl-group"><label>Date</label><input type="date" id="q-date" style="width:138px;"></div>
-  <div class="ctrl-group"><label>Subject (optional)</label><textarea id="q-subject" rows="2" placeholder="Supply of Air Conditioners" style="width:195px;"></textarea></div>
+  <div class="ctrl-group"><label>To (Client)</label><textarea id="cl-name" rows="3" placeholder="Patil Rail Infrastructure Pvt Ltd" class="ctrl-wide"></textarea></div>
+  <div class="ctrl-group"><label>City / Place</label><textarea id="cl-place" rows="2" placeholder="Chandrapur" class="ctrl-narrow"></textarea></div>
+  <div class="ctrl-group"><label>Date</label><input type="date" id="q-date" class="ctrl-date"></div>
+  <div class="ctrl-group"><label>Subject (optional)</label><textarea id="q-subject" rows="2" placeholder="Supply of Air Conditioners" class="ctrl-subj"></textarea></div>
   <div class="editor-actions">
     <button class="btn btn-add"   onclick="addRow()">+ Add Item</button>
-    <button class="btn btn-pdf"   onclick="downloadPDF()">&#11015; PDF</button>
+    <button type="button" class="btn btn-share share-mobile-only" onclick="shareQuotation()">Share</button>
     <button class="btn btn-print" onclick="window.print()">&#128438; Print</button>
     <button class="btn btn-clear" onclick="clearAll()">&#10005; Reset</button>
     <button type="button" class="btn btn-print" onclick="logout()">Sign out</button>
@@ -414,6 +494,7 @@ html.pdf-capture .items-table tbody td.del-col {
         <strong>Sub:</strong> <span id="disp-subject-text"></span>
       </div>
 
+      <div class="items-table-wrap">
       <table class="items-table">
         <colgroup>
           <col class="col-sr">
@@ -441,6 +522,7 @@ html.pdf-capture .items-table tbody td.del-col {
         </thead>
         <tbody id="items-body"></tbody>
       </table>
+      </div>
 
       <div class="total-section">
         <div class="total-box">
@@ -754,63 +836,76 @@ function clearAll() {
   updateMeta(); calcGrand();
 }
 
-function downloadPDF() {
-  var html = document.documentElement;
-  var page = document.getElementById('quotation-page');
-  toast('Generating PDF…');
-  function endPdfCapture() {
-    html.classList.remove('pdf-capture');
-  }
-  html.classList.add('pdf-capture');
-  window.scrollTo(0, 0);
-  requestAnimationFrame(function() {
-    requestAnimationFrame(function() {
-      html2canvas(page, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        letterRendering: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      }).then(function(canvas) {
-        var jsPDF = window.jspdf.jsPDF;
-        var pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-        var pdfW = pdf.internal.pageSize.getWidth();
-        var pdfH = pdf.internal.pageSize.getHeight();
-        var cw = canvas.width;
-        var ch = canvas.height;
-        var sliceH = Math.round(1123 * (cw / 794));
-        if (sliceH < 16) sliceH = ch;
+function buildShareSummary() {
+  var nameEl = document.getElementById('cl-name');
+  var raw = nameEl ? nameEl.value : '';
+  raw = raw.trim().split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean).join(' ');
+  if (!raw) raw = '(No client)';
+  var place = (document.getElementById('cl-place') || {}).value || '';
+  place = place.trim().replace(/\s+/g, ' ');
+  var subj = (document.getElementById('q-subject') || {}).value || '';
+  subj = subj.trim();
+  var date = (document.getElementById('disp-date') || {}).textContent || '';
+  var totalEl = document.getElementById('grand-total');
+  var total = totalEl ? totalEl.textContent : '₹0';
+  var lines = ['Shivatronics — Quotation', 'Client: ' + raw];
+  if (place) lines.push('Place: ' + place);
+  if (date && date !== '—') lines.push('Date: ' + date);
+  if (subj) lines.push('Subject: ' + subj);
+  lines.push('Total (incl. GST): ' + total);
+  lines.push('');
+  lines.push('(Open quotation page for full breakdown.)');
+  return lines.join('\n');
+}
 
-        var firstPage = true;
-        for (var srcY = 0; srcY < ch; srcY += sliceH) {
-          if (!firstPage) pdf.addPage();
-          firstPage = false;
-          var cropH = Math.min(sliceH, ch - srcY);
-          var slab = document.createElement('canvas');
-          slab.width = cw;
-          slab.height = cropH;
-          var sctx = slab.getContext('2d');
-          sctx.fillStyle = '#ffffff';
-          sctx.fillRect(0, 0, cw, cropH);
-          sctx.drawImage(canvas, 0, srcY, cw, cropH, 0, 0, cw, cropH);
-          var sliceImg = slab.toDataURL('image/png');
-          var slicePdfH = pdfH * (cropH / sliceH);
-          pdf.addImage(sliceImg, 'PNG', 0, 0, pdfW, slicePdfH);
-        }
-
-        var name = (document.getElementById('cl-name').value.trim() || 'Quotation').replace(/[\r\n]+/g, ' ');
-        var date = document.getElementById('q-date').value || 'draft';
-        pdf.save('Shivatronics_Quote_' + name + '_' + date + '.pdf');
-        endPdfCapture();
-        toast('PDF saved!', true);
-      }).catch(function(err) {
-        endPdfCapture();
-        toast('PDF failed — try Print→Save as PDF, or open via a local web server.');
-        console.error(err);
-      });
+function copyShareFallback(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(function() {
+      toast('Copied — paste into WhatsApp, Gmail, Notes, …', true);
+    }).catch(function() {
+      legacyCopyText(text);
+      return Promise.resolve();
     });
-  });
+  }
+  legacyCopyText(text);
+  return Promise.resolve();
+}
+
+function legacyCopyText(text) {
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('Copied — paste wherever you like', true);
+  } catch (e) {
+    window.prompt('Copy this text:', text);
+  }
+}
+
+function shareQuotation() {
+  var text = buildShareSummary();
+  var url = window.location.href;
+  var sharePayload = {
+    title: 'Shivatronics quotation',
+    text: text,
+    url: url
+  };
+  if (typeof navigator.share === 'function') {
+    navigator.share(sharePayload).then(function() {
+      toast('Shared', true);
+    }).catch(function(err) {
+      if (err && err.name === 'AbortError') return;
+      copyShareFallback(text + '\n' + url);
+    });
+    return;
+  }
+  copyShareFallback(text + '\n' + url);
 }
 
 function fmt(n) {

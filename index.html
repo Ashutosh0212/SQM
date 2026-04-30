@@ -247,6 +247,72 @@ html.pdf-capture .items-table tbody td.del-col {
   padding: 0 !important; border-width: 0 !important;
 }
 
+/* Force full desktop A4 width while capturing (overrides narrow-viewport/mobile layout) */
+html.pdf-capture-a4 body {
+  overflow-x: auto !important;
+}
+html.pdf-capture-a4 #page-wrapper {
+  padding: 1.25rem !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  min-width: 820px !important;
+}
+html.pdf-capture-a4 #quotation-page {
+  width: 794px !important;
+  max-width: 794px !important;
+  min-width: 794px !important;
+  min-height: 1123px !important;
+  height: auto !important;
+  padding: 248px 62px 58px !important;
+  padding-top: 248px !important;
+  padding-left: 62px !important;
+  padding-right: 62px !important;
+  padding-bottom: 58px !important;
+  box-sizing: border-box !important;
+  background-size: 794px 1123px !important;
+  background-repeat: repeat-y !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.28) !important;
+}
+html.pdf-capture-a4 #content-area {
+  min-height: 0 !important;
+}
+html.pdf-capture-a4 .items-table {
+  min-width: 0 !important;
+}
+html.pdf-capture-a4 .items-table-wrap {
+  overflow-x: visible !important;
+}
+html.pdf-capture-a4 .meta-row {
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+}
+html.pdf-capture-a4 .meta-row .to-col {
+  max-width: 84% !important;
+}
+html.pdf-capture-a4 .date-block {
+  text-align: right !important;
+}
+html.pdf-capture-a4 .footer-row {
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  gap: 0 !important;
+}
+html.pdf-capture-a4 .sign-block {
+  align-self: auto !important;
+  max-width: none !important;
+}
+html.pdf-capture-a4 .total-box {
+  width: 220px !important;
+  max-width: none !important;
+}
+html.pdf-capture-a4 .del-row {
+  width: 18px !important;
+  height: 18px !important;
+  min-height: 0 !important;
+  font-size: 12px !important;
+}
+
 
 /* ── MOBILE / NARROW VIEWPORTS ─────────────────────────── */
 @media (max-width: 768px) {
@@ -857,14 +923,18 @@ function buildQuotationPdfBlob() {
   return new Promise(function(resolve, reject) {
     var root = document.documentElement;
     var page = document.getElementById('quotation-page');
-    if (!page || typeof html2canvas === 'undefined') {
+    if (!page || typeof html2canvas === 'undefined' || !window.jspdf || !window.jspdf.jsPDF) {
       reject(new Error('pdf-lib-missing'));
       return;
     }
-    root.classList.add('pdf-capture');
+    root.classList.add('pdf-capture', 'pdf-capture-a4');
     window.scrollTo(0, 0);
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
+
+    function endCaptureClasses() {
+      root.classList.remove('pdf-capture', 'pdf-capture-a4');
+    }
+
+    function runCanvas() {
         html2canvas(page, {
           scale: 2,
           useCORS: true,
@@ -873,7 +943,7 @@ function buildQuotationPdfBlob() {
           logging: false,
           backgroundColor: '#ffffff'
         }).then(function(canvas) {
-          root.classList.remove('pdf-capture');
+          endCaptureClasses();
           try {
             var jsPDF = window.jspdf.jsPDF;
             var pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
@@ -881,7 +951,10 @@ function buildQuotationPdfBlob() {
             var pdfH = pdf.internal.pageSize.getHeight();
             var cw = canvas.width;
             var ch = canvas.height;
-            var sliceH = Math.round(1123 * (cw / 794));
+            /* Match PDF page splits to rendered sheet width so A4 lines up on phone + desktop */
+            var logicalPx = Math.round(page.getBoundingClientRect().width) || 794;
+            if (logicalPx < 200) logicalPx = 794;
+            var sliceH = Math.round(1123 * (cw / logicalPx));
             if (sliceH < 16) sliceH = ch;
             var firstPage = true;
             for (var srcY = 0; srcY < ch; srcY += sliceH) {
@@ -905,12 +978,32 @@ function buildQuotationPdfBlob() {
             reject(e);
           }
         }).catch(function(err) {
-          root.classList.remove('pdf-capture');
+          endCaptureClasses();
           reject(err);
+        });
+    }
+
+    /* Let mobile browser apply pdf-capture-a4 layout before measuring */
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          setTimeout(runCanvas, 50);
         });
       });
     });
   });
+}
+
+/** Short line for WhatsApp/email share alongside PDF */
+function buildShortShareSummary() {
+  var nameEl = document.getElementById('cl-name');
+  var raw = nameEl ? nameEl.value : '';
+  raw = raw.trim().split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean).join(' ');
+  if (!raw) raw = '(No client)';
+  var date = (document.getElementById('disp-date') || {}).textContent || '';
+  if (!date || date === '—') date = '(No date)';
+  var total = (document.getElementById('grand-total') || {}).textContent || '₹0';
+  return ['Shivatronics quotation', 'Client: ' + raw, 'Date: ' + date, 'Total (incl. GST): ' + total].join('\n');
 }
 
 function downloadPdfBlobLocal(blob, filename) {
@@ -923,28 +1016,6 @@ function downloadPdfBlobLocal(blob, filename) {
   a.click();
   document.body.removeChild(a);
   setTimeout(function() { URL.revokeObjectURL(u); }, 2500);
-}
-
-function buildShareSummary() {
-  var nameEl = document.getElementById('cl-name');
-  var raw = nameEl ? nameEl.value : '';
-  raw = raw.trim().split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean).join(' ');
-  if (!raw) raw = '(No client)';
-  var place = (document.getElementById('cl-place') || {}).value || '';
-  place = place.trim().replace(/\s+/g, ' ');
-  var subj = (document.getElementById('q-subject') || {}).value || '';
-  subj = subj.trim();
-  var date = (document.getElementById('disp-date') || {}).textContent || '';
-  var totalEl = document.getElementById('grand-total');
-  var total = totalEl ? totalEl.textContent : '₹0';
-  var lines = ['Shivatronics — Quotation', 'Client: ' + raw];
-  if (place) lines.push('Place: ' + place);
-  if (date && date !== '—') lines.push('Date: ' + date);
-  if (subj) lines.push('Subject: ' + subj);
-  lines.push('Total (incl. GST): ' + total);
-  lines.push('');
-  lines.push('(Open quotation page for full breakdown.)');
-  return lines.join('\n');
 }
 
 function copyShareFallback(text) {
@@ -978,7 +1049,7 @@ function legacyCopyText(text) {
 }
 
 async function shareQuotation() {
-  var text = buildShareSummary();
+  var text = buildShortShareSummary();
   var url = window.location.href;
   toast('Creating PDF…', false);
 

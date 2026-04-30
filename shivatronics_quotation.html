@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shivatronics — Quotation Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
+
+/* ── EDITOR BAR ── */
+#editor {
+  background:#1c2a3a; color:#e2e8f0;
+  padding:0.8rem 1.4rem; display:flex; flex-wrap:wrap;
+  gap:0.65rem; align-items:flex-end;
+  border-bottom:3px solid #2563eb;
+  position:sticky; top:0; z-index:100;
+}
+#editor h1 { width:100%; font-size:0.8rem; font-weight:700; color:#93c5fd; letter-spacing:0.05em; text-transform:uppercase; }
+.ctrl-group { display:flex; flex-direction:column; gap:0.2rem; }
+.ctrl-group label { font-size:0.6rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:#94a3b8; }
+.ctrl-group input {
+  background:#243447; border:1.5px solid #334155; border-radius:5px;
+  color:#e2e8f0; font-family:'Inter',sans-serif; font-size:0.78rem;
+  padding:0.34rem 0.58rem; outline:none; transition:border-color 0.15s;
+}
+.ctrl-group input:focus, .ctrl-group textarea:focus { border-color:#3b82f6; }
+.ctrl-group textarea {
+  background:#243447; border:1.5px solid #334155; border-radius:5px;
+  color:#e2e8f0; font-family:'Inter',sans-serif; font-size:0.78rem;
+  padding:0.34rem 0.58rem; outline:none; transition:border-color 0.15s;
+  resize:vertical; min-height:2.6em; line-height:1.35;
+}
+.editor-actions { display:flex; gap:0.45rem; align-items:flex-end; margin-left:auto; }
+.btn { padding:0.44rem 0.9rem; border-radius:6px; font-family:'Inter',sans-serif; font-size:0.77rem; font-weight:600; cursor:pointer; border:none; transition:all 0.15s; white-space:nowrap; }
+.btn-add   { background:#16a34a; color:white; } .btn-add:hover   { background:#15803d; }
+.btn-pdf   { background:#2563eb; color:white; } .btn-pdf:hover   { background:#1d4ed8; }
+.btn-print { background:#475569; color:white; } .btn-print:hover { background:#334155; }
+.btn-clear { background:#dc2626; color:white; font-size:0.7rem; } .btn-clear:hover { background:#b91c1c; }
+
+/* ── PAGE WRAPPER ── */
+#page-wrapper { display:flex; justify-content:center; padding:1.25rem; }
+
+/* ── A4 PAGE ──
+   Logical width 794px ≈ A4 preview. Height grows with content; min-height = one sheet.
+   Letterhead tiles every 1123px vertically so multi-page preview/print repeats header+footer artwork.
+   PNG file must sit next to this HTML (edit url if renamed). */
+#quotation-page {
+  width: 794px;
+  min-height: 1123px;
+  height: auto;
+  position: relative;
+  box-sizing: border-box;
+  padding: 248px 62px 58px; /* ~3–4 lines below header band; higher footer block */
+  background-color: #fff;
+  background-image: url('Shivatronics letterhead A4.png');
+  background-size: 794px 1123px;
+  background-repeat: repeat-y;
+  background-position: center top;
+  overflow: visible;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Body column wraps .content-stack (quotation flows top → bottom). */
+#content-area {
+  position: relative;
+  overflow: visible;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Quotations starts at top below header artwork (no vertical centering) */
+.content-stack {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0;
+}
+
+/* ── TO / DATE ── */
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.meta-row .to-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 84%;
+  padding-right: 4px;
+}
+.to-label { font-size:8.5px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#1d4ed8; margin-bottom:1px; }
+/* Name breaks only where user presses Enter in the To field — no auto-wrap on width */
+.to-name  { font-size:12.5px; font-weight:700; color:#0f172a; line-height:1.35;
+  white-space:pre; word-break:normal; overflow-wrap:normal; overflow-x:visible; }
+.to-place { font-size:10.5px; color:#475569;
+  white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; }
+.date-block { flex-shrink: 0; text-align: right; min-width: max-content; }
+.date-label { font-size:8.5px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#1d4ed8; margin-bottom:1px; }
+.date-val   { font-size:11px; color:#0f172a; }
+
+/* ── SUBJECT ── */
+.subject-line { font-size:10.5px; color:#0f172a; margin-bottom:8px; display:none; flex-shrink:0;
+  white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; line-height:1.4; }
+.subject-line strong { font-weight:700; }
+
+/* ── ITEMS TABLE ──
+   Wider numeric cols + overflow:visible so PDF capture does not clip amounts. */
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  margin-bottom: 5px;
+  flex-shrink: 0;
+  table-layout: fixed;   /* enforce column widths strictly */
+}
+.items-table thead { display: table-header-group; }
+.items-table tbody { display: table-row-group; }
+.items-table thead tr { background:#1e3a5f; color:white; }
+.items-table thead th {
+  padding:5px 5px; font-size:7.5px; font-weight:700;
+  letter-spacing:0.04em; text-transform:uppercase;
+  text-align:left; border:1px solid #1e3a5f;
+  overflow:visible;
+}
+.items-table thead th.r { text-align:right; }
+
+.items-table tbody tr { border-bottom:1px solid #cbd5e1; }
+.items-table tbody tr:nth-child(even) { background:rgba(219,234,254,0.16); }
+.items-table tbody td {
+  padding:5px 6px; color:#0f172a; border:1px solid #e2e8f0;
+  vertical-align:top; overflow:visible;
+}
+.items-table tbody td.r {
+  text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;
+  vertical-align:top;
+  overflow:visible;
+  padding:5px 8px;
+}
+.items-table tbody td.wrap { vertical-align:top; white-space:normal; word-break:break-word; overflow-wrap:anywhere; }
+.items-table tbody td.bold { font-weight:700; }
+
+/* Number inputs — right-aligned, no spin buttons */
+.items-table tbody td input[type="number"] {
+  width:100%; min-width:0; border:none; background:transparent;
+  font-family:'Inter',sans-serif; font-size:10px; color:#0f172a;
+  outline:none; padding:0 1px 0 0; text-align:right;
+  line-height:1.35;
+  -moz-appearance:textfield;
+}
+.items-table tbody td input[type="number"]::-webkit-outer-spin-button,
+.items-table tbody td input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; }
+.items-table tbody td input[type="number"]:focus { background:rgba(219,234,254,0.45); border-radius:2px; }
+
+/* Contenteditable divs for text columns (wrap naturally) */
+.cell-text {
+  width:100%; border:none; background:transparent; display:block;
+  font-family:'Inter',sans-serif; font-size:10px; color:#0f172a;
+  outline:none; padding:0; min-height:14px;
+  white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere;
+  cursor:text; line-height:1.4;
+}
+.cell-text:focus { background:rgba(219,234,254,0.45); border-radius:2px; }
+.cell-text:empty:before { content:attr(data-placeholder); color:#94a3b8; pointer-events:none; }
+
+/* Column widths — fixed; desc col takes remainder of ~670px content width */
+.col-sr    { width:24px; }
+.col-make  { width:64px; }
+.col-model { width:72px; }
+.col-desc  { }              /* takes remaining space */
+.col-basic { width:94px; }
+.col-rate  { width:90px; }
+.col-qty   { width:28px; }
+.col-total { width:86px; }
+.col-del   { width:22px; } /* screen-only; column hidden in print/PDF */
+
+/* ── TOTALS ── */
+.total-section { display:flex; justify-content:flex-end; margin-bottom:10px; flex-shrink:0; }
+.total-box { width:220px; border:1px solid #cbd5e1; border-radius:4px; overflow:visible; font-size:10px; }
+.t-row { display:flex; justify-content:space-between; padding:4px 8px; border-bottom:1px solid #e2e8f0; }
+.t-row:last-child { border-bottom:none; }
+.t-row .t-l { color:#475569; }
+.t-row .t-v { font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap;
+  overflow:visible; max-width:none; flex-shrink:0; margin-left:8px; }
+.t-row.grand { background:#1e3a5f; color:white; }
+.t-row.grand .t-l { color:rgba(255,255,255,0.85); font-weight:700; }
+.t-row.grand .t-v { color:white; font-weight:700; font-size:10.5px; }
+
+/* ── TERMS ── */
+.terms-section { flex-shrink:0; margin-bottom:4px; }
+.terms-title { font-size:8px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#1d4ed8; margin-bottom:2px; }
+.terms-section ul { padding-left:12px; margin:0; }
+.terms-section ul li { font-size:9.5px; color:#334155; line-height:1.65; }
+
+/* ── BANK + SIGNATURE — pinned to bottom ── */
+.footer-row {
+  display:flex; justify-content:space-between; align-items:flex-end;
+  margin-top:14px; padding-top:6px; flex-shrink:0;
+  margin-bottom: 0;
+}
+.bank-title { font-size:8px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#1d4ed8; margin-bottom:2px; }
+.bank-block p { font-size:9.5px; color:#334155; line-height:1.65; }
+.sign-block { text-align:center; font-size:9.5px; color:#334155; }
+.sign-line { border-top:1px solid #64748b; width:140px; margin:22px auto 3px; padding-top:3px; }
+
+/* ── DELETE BUTTON (hidden with column in print / PDF capture) ── */
+.del-row {
+  background:none; border:none; cursor:pointer;
+  color:#dc2626; font-size:12px; font-weight:700; line-height:1;
+  width:18px; height:18px; border-radius:3px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.12s; padding:0;
+}
+.del-row:hover { background:#fecaca; color:#b91c1c; }
+
+/* ── PDF capture — hide Actions column (same as print) ── */
+html.pdf-capture .items-table col.del-col,
+html.pdf-capture .items-table thead th.del-col,
+html.pdf-capture .items-table tbody td.del-col {
+  display: none !important;
+  visibility: collapse !important;
+  width: 0 !important; min-width: 0 !important;
+  padding: 0 !important; border-width: 0 !important;
+}
+
+/* ── PRINT ── */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  #login-screen { display: none !important; }
+  #editor { display:none !important; }
+  #page-wrapper { padding:0; justify-content:flex-start !important; }
+  #quotation-page {
+    box-shadow: none !important;
+    width: 210mm !important;
+    height: auto !important;
+    overflow: visible !important;
+    background-size: 210mm 297mm !important;
+    background-repeat: repeat-y !important;
+    padding-top: 65.6mm !important;
+    padding-left: 16.4mm !important;
+    padding-right: 16.4mm !important;
+    padding-bottom: 15.35mm !important;
+    box-sizing: border-box !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  #content-area { min-height: 0 !important; }
+  /* Kept small blocks together; allow text/table to flow — no avoid on large regions */
+  .total-section .total-box {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .footer-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  /* Remove Actions column entirely (no empty gutter) */
+  .items-table col.del-col,
+  .items-table thead th.del-col,
+  .items-table tbody td.del-col {
+    display: none !important;
+    visibility: collapse !important;
+    width: 0 !important; min-width: 0 !important;
+    padding: 0 !important; border-width: 0 !important;
+  }
+  .cell-text:empty:before { content:''; }
+  .items-table tbody td input[type="number"]::-webkit-outer-spin-button,
+  .items-table tbody td input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; }
+}
+
+/* ── TOAST ── */
+#toast { position:fixed; bottom:1.5rem; right:1.5rem; background:#1e3a5f; color:white; padding:0.5rem 0.85rem; border-radius:6px; font-size:0.76rem; font-weight:500; transform:translateY(80px); opacity:0; transition:all 0.3s; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,0.2); }
+#toast.show { transform:translateY(0); opacity:1; }
+#toast.ok { background:#15803d; }
+
+/* ── LOGIN (client-side gate — see script header for caveats on GitHub Pages) ── */
+#login-screen {
+  position: fixed; inset: 0;
+  background: radial-gradient(1200px 800px at 30% -10%, rgba(37,99,235,0.35), transparent),
+              linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #0f172a 100%);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10001;
+  padding: 1.5rem;
+}
+#login-screen[hidden] { display: none !important; }
+.login-card {
+  width: 100%; max-width: 380px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.65rem 1.5rem 1.4rem;
+  box-shadow: 0 22px 50px rgba(0,0,0,0.35);
+}
+.login-card h2 {
+  font-size: 1.1rem; font-weight: 700;
+  color: #0f172a; letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+.login-sub {
+  font-size: 0.76rem; color: #64748b;
+  margin-bottom: 1.15rem;
+  line-height: 1.4;
+}
+#login-form { display:flex; flex-direction:column; gap:0.75rem; }
+#login-form label {
+  font-size: 0.62rem; font-weight:600; letter-spacing:0.08em;
+  text-transform: uppercase; color: #475569;
+  display:flex; flex-direction:column; gap:0.35rem;
+}
+#login-form input[type="text"],
+#login-form input[type="password"] {
+  padding: 0.5rem 0.62rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+#login-form input:focus {
+  border-color: #2563eb;
+}
+#login-err {
+  font-size: 0.73rem;
+  color: #b91c1c;
+  min-height: 1.05rem;
+  margin: 0;
+}
+#login-form .btn-submit {
+  margin-top: 0.35rem;
+  width: 100%; padding: 0.52rem;
+  justify-content:center;
+}
+.login-note {
+  font-size: 0.65rem; color: #94a3b8;
+  margin-top: 1rem;
+  line-height: 1.45;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ (credentials = SHA-256 only in repo — no plaintext passwords) -->
+<div id="login-screen">
+  <div class="login-card">
+    <h2>Shivatronics</h2>
+    <p class="login-sub">Sign in to open the quotation builder.</p>
+    <form id="login-form">
+      <label>User ID
+        <input type="text" id="login-user" name="login-user" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+      </label>
+      <label>Password
+        <input type="password" id="login-pass" name="login-pass" autocomplete="current-password" required>
+      </label>
+      <p id="login-err"></p>
+      <button type="submit" class="btn btn-submit btn-pdf">Sign in</button>
+    </form>
+    <p class="login-note">Purely client-side unlock: use a strong password and replace the login hash before publishing.</p>
+  </div>
+</div>
+
+<div id="app-main" hidden>
+
+<!-- ═══ EDITOR BAR ═══ -->
+<div id="editor">
+  <h1>Shivatronics &#8212; Quotation Builder</h1>
+  <div class="ctrl-group"><label>To (Client)</label><textarea id="cl-name" rows="3" placeholder="Patil Rail Infrastructure Pvt Ltd" style="width:280px;"></textarea></div>
+  <div class="ctrl-group"><label>City / Place</label><textarea id="cl-place" rows="2" placeholder="Chandrapur" style="width:108px;"></textarea></div>
+  <div class="ctrl-group"><label>Date</label><input type="date" id="q-date" style="width:138px;"></div>
+  <div class="ctrl-group"><label>Subject (optional)</label><textarea id="q-subject" rows="2" placeholder="Supply of Air Conditioners" style="width:195px;"></textarea></div>
+  <div class="editor-actions">
+    <button class="btn btn-add"   onclick="addRow()">+ Add Item</button>
+    <button class="btn btn-pdf"   onclick="downloadPDF()">&#11015; PDF</button>
+    <button class="btn btn-print" onclick="window.print()">&#128438; Print</button>
+    <button class="btn btn-clear" onclick="clearAll()">&#10005; Reset</button>
+    <button type="button" class="btn btn-print" onclick="logout()">Sign out</button>
+  </div>
+</div>
+
+<!-- ═══ QUOTATION PAGE ═══ -->
+<div id="page-wrapper">
+  <div id="quotation-page">
+    <div id="content-area">
+      <div class="content-stack">
+
+      <div class="meta-row">
+        <div class="to-col">
+          <div class="to-label">To</div>
+          <div class="to-name"  id="disp-name">&#8212;</div>
+          <div class="to-place" id="disp-place"></div>
+        </div>
+        <div class="date-block">
+          <div class="date-label">Date</div>
+          <div class="date-val" id="disp-date">&#8212;</div>
+        </div>
+      </div>
+
+      <div class="subject-line" id="disp-subject">
+        <strong>Sub:</strong> <span id="disp-subject-text"></span>
+      </div>
+
+      <table class="items-table">
+        <colgroup>
+          <col class="col-sr">
+          <col class="col-make">
+          <col class="col-model">
+          <col class="col-desc">
+          <col class="col-basic">
+          <col class="col-rate">
+          <col class="col-qty">
+          <col class="col-total">
+          <col class="col-del del-col">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="col-sr" style="text-align:center;">Sr.</th>
+            <th class="col-make">Make</th>
+            <th class="col-model">Model</th>
+            <th class="col-desc">Description</th>
+            <th class="col-basic r">Basic (excl. GST)</th>
+            <th class="col-rate r">Rate (incl. 18% GST)</th>
+            <th class="col-qty r">Qty</th>
+            <th class="col-total r">Total</th>
+            <th class="col-del del-col" aria-label="Actions"></th>
+          </tr>
+        </thead>
+        <tbody id="items-body"></tbody>
+      </table>
+
+      <div class="total-section">
+        <div class="total-box">
+          <div class="t-row grand">
+            <span class="t-l">Total</span>
+            <span class="t-v" id="grand-total">&#8377;0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="terms-section">
+        <div class="terms-title">Terms &amp; Conditions</div>
+        <ul>
+          <li>Above rates are inclusive of GST</li>
+          <li>Warranty: 10 years on compressor</li>
+          <li>Delivery: For Wadi, Nagpur or at actual</li>
+          <li>Stand and installation charges are extra</li>
+          <li>Payment: 100% advance with purchase order</li>
+        </ul>
+      </div>
+
+      <div class="footer-row">
+        <div class="bank-block">
+          <div class="bank-title">Bank Details</div>
+          <p>Kotak Mahindra Bank<br>Account No: 0211197122<br>GST No: 27ABFPG1936K1ZM</p>
+        </div>
+        <div class="sign-block">
+          <div class="sign-line">For Shivatronics</div>
+          <div>(Authorised Signatory)</div>
+        </div>
+      </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</div><!-- /#app-main -->
+
+<div id="toast"></div>
+
+<script>
+
+
+var rowId = 0;
+var quotationAppInitialized = false;
+
+/** ── LOGIN (GitHub Pages = static-only; realistic expectations) ──
+ * Password is NEVER stored as plain text — only SHA-256 hex of this exact string matches:
+ *   LOGIN_SALT + "\\n" + user.toLowerCase().trim() + "\\n" + password
+ *
+ * Repo still exposes LOGIN_SALT + EXPECTED_LOGIN_SHA256 → anyone can attempt offline brute-force.
+ * sessionStorage bypass is trivial via DevTools. Use Firebase Auth / similar if you need real security.
+ *
+ * Rotate password: compute new SHA-256 (replace USERNAME and PASSWORD), paste into EXPECTED_LOGIN_SHA256:
+ *   node -p "require('crypto').createHash('sha256').update(['shivatronics-quotation-login-v2026','USERNAME','PASSWORD'].join(String.fromCharCode(10))).digest('hex')"
+ */
+var LOGIN_SESSION_KEY = 'shivatronics_quote_auth_ok';
+var LOGIN_SALT = 'shivatronics-quotation-login-v2026';
+var EXPECTED_LOGIN_SHA256 = 'fd43680b08c328b856851ffd56432ac7dcdd96395d79e7dfebb5fa08d202d644';
+
+function logout() {
+  try { sessionStorage.removeItem(LOGIN_SESSION_KEY); } catch (e) {}
+  quotationAppInitialized = false;
+  location.reload();
+}
+
+function hexFromBuffer(buffer) {
+  return Array.from(new Uint8Array(buffer)).map(function(b){ return ('0' + b.toString(16)).slice(-2); }).join('');
+}
+
+function hashCredential(user, password) {
+  var msg = LOGIN_SALT + '\n' + String(user || '').trim().toLowerCase() + '\n' + password;
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg)).then(hexFromBuffer);
+}
+
+function initQuotationApp() {
+  if (quotationAppInitialized) return;
+  quotationAppInitialized = true;
+
+  document.getElementById('q-date').value = new Date().toISOString().split('T')[0];
+  updateMeta();
+  ['cl-name','cl-place','q-date','q-subject'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', updateMeta);
+  });
+  addRow('Voltas', '185 V Vertis Emerald', '1.5 Ton 5 Star Inverter', 33050.84, 39000, 1);
+  addRow('Voltas', '183 V CAW', '1.5 Ton 3 Star Inverter', 25000, 29500, 1);
+}
+
+function unlockApp() {
+  var loginScr = document.getElementById('login-screen');
+  var appMain  = document.getElementById('app-main');
+  if (loginScr) loginScr.hidden = true;
+  if (appMain) { appMain.hidden = false; appMain.removeAttribute('hidden'); }
+  try { sessionStorage.setItem(LOGIN_SESSION_KEY, '1'); } catch (e) {}
+  initQuotationApp();
+}
+
+function bindAuthGate() {
+  var form = document.getElementById('login-form');
+  var loginScr = document.getElementById('login-screen');
+  var appMain = document.getElementById('app-main');
+  if (!form || !loginScr || !appMain) return;
+
+  try {
+    if (sessionStorage.getItem(LOGIN_SESSION_KEY) === '1') {
+      unlockApp();
+      return;
+    }
+  } catch (e) {}
+
+  loginScr.hidden = false;
+  appMain.hidden = true;
+
+  form.addEventListener('submit', function(ev) {
+    ev.preventDefault();
+    var errEl = document.getElementById('login-err');
+    errEl.textContent = '';
+    var u = document.getElementById('login-user').value;
+    var p = document.getElementById('login-pass').value;
+    hashCredential(u, p).then(function(hex) {
+      if (hex === EXPECTED_LOGIN_SHA256) {
+        unlockApp();
+      } else {
+        errEl.textContent = 'Invalid user ID or password.';
+      }
+    }).catch(function(e) {
+      errEl.textContent = 'Sign-in unavailable in this browser.';
+      console.error(e);
+    });
+  });
+}
+
+window.addEventListener('DOMContentLoaded', bindAuthGate);
+
+/** GST on Rate column: Rate = Basic × (1 + GST%); Basic = Rate ÷ (1 + GST%) */
+var GST_PERCENT = 18;
+var GST_MULT = 1 + GST_PERCENT / 100;
+
+function roundMoney(v) {
+  return Math.round(v * 100) / 100;
+}
+
+/** When user edits Basic or GST-inclusive Rate, update the paired field */
+function syncBasicRateFromEdited(rowId, sourceField) {
+  var row = document.getElementById('row-' + rowId);
+  if (!row) return;
+  var bEl = row.querySelector('[data-field="basic"]');
+  var rEl = row.querySelector('[data-field="rate"]');
+  if (!bEl || !rEl) return;
+  if (sourceField === 'basic') {
+    var tb = bEl.value.trim();
+    if (tb === '') return;
+    var b = parseFloat(tb);
+    if (isNaN(b)) return;
+    rEl.value = String(roundMoney(b * GST_MULT));
+  } else if (sourceField === 'rate') {
+    var tr = rEl.value.trim();
+    if (tr === '') return;
+    var r = parseFloat(tr);
+    if (isNaN(r)) return;
+    bEl.value = String(roundMoney(r / GST_MULT));
+  }
+}
+
+
+function updateMeta() {
+  var name  = document.getElementById('cl-name').value.trim();
+  var place = document.getElementById('cl-place').value.trim();
+  var date  = document.getElementById('q-date').value;
+  var subj  = document.getElementById('q-subject').value.trim();
+  document.getElementById('disp-name').textContent  = name  || '—';
+  document.getElementById('disp-place').textContent = place || '';
+  if (date) {
+    var d = new Date(date + 'T00:00:00');
+    document.getElementById('disp-date').textContent =
+      d.toLocaleDateString('en-IN', { day:'2-digit', month:'2-digit', year:'numeric' });
+  } else {
+    document.getElementById('disp-date').textContent = '—';
+  }
+  var subjEl = document.getElementById('disp-subject');
+  if (subj) {
+    document.getElementById('disp-subject-text').textContent = subj;
+    subjEl.style.display = 'block';
+  } else {
+    subjEl.style.display = 'none';
+  }
+}
+
+function addRow(make, model, desc, basic, rate, qty) {
+  rowId++;
+  var id = rowId;
+  var tbody = document.getElementById('items-body');
+  var tr = document.createElement('tr');
+  tr.id = 'row-' + id;
+
+  // Sr. number cell
+  var srTd = document.createElement('td');
+  srTd.style.cssText = 'text-align:center;color:#64748b;font-size:9px;';
+  srTd.textContent = tbody.rows.length + 1;
+  tr.appendChild(srTd);
+
+  // Contenteditable text cell — wraps text properly
+  function textCell(field, val, ph) {
+    var td  = document.createElement('td');
+    td.className = 'wrap';
+    var div = document.createElement('div');
+    div.className = 'cell-text';
+    div.contentEditable = 'true';
+    div.setAttribute('data-field', field);
+    div.setAttribute('data-placeholder', ph || '');
+    div.textContent = val || '';
+    td.appendChild(div);
+    return td;
+  }
+
+  // Number input cell — right-aligned, no overflow
+  function numCell(field, val, ph, step) {
+    var td  = document.createElement('td');
+    td.className = 'r';
+    var inp = document.createElement('input');
+    inp.type = 'number';
+    inp.setAttribute('data-field', field);
+    inp.value = (val !== undefined && val !== null && val !== '') ? val : '';
+    inp.placeholder = ph || '0';
+    inp.min = '0';
+    inp.step = step || '0.01';
+    inp.addEventListener('input', function() {
+      if (field === 'basic' || field === 'rate') syncBasicRateFromEdited(id, field);
+      calcRow(id);
+    });
+    td.appendChild(inp);
+    return td;
+  }
+
+  tr.appendChild(textCell('make',  make  || '', 'Voltas'));
+  tr.appendChild(textCell('model', model || '', '185 V Vertis'));
+  tr.appendChild(textCell('desc',  desc  || '', '1.5 Ton 5 Star Inverter'));
+  tr.appendChild(numCell('basic', basic,  '0.00', '0.01'));
+  tr.appendChild(numCell('rate',  rate,   '0.00', '0.01'));
+  tr.appendChild(numCell('qty',   qty !== undefined ? qty : 1, '1', '1'));
+
+  var totalTd = document.createElement('td');
+  totalTd.className = 'r bold';
+  totalTd.id = 'rowtotal-' + id;
+  totalTd.textContent = '₹0';
+  tr.appendChild(totalTd);
+
+  var delTd  = document.createElement('td');
+  delTd.className = 'del-col';
+  var delBtn = document.createElement('button');
+  delBtn.className = 'del-row';
+  delBtn.title = 'Remove';
+  delBtn.textContent = '✕';
+  delBtn.addEventListener('click', function() { deleteRow(id); });
+  delTd.appendChild(delBtn);
+  tr.appendChild(delTd);
+
+  tbody.appendChild(tr);
+  calcRow(id);
+}
+
+function calcRow(id) {
+  var row = document.getElementById('row-' + id);
+  if (!row) return;
+  function getNum(field) {
+    var el = row.querySelector('[data-field="' + field + '"]');
+    if (!el) return 0;
+    var v = (el.tagName === 'INPUT') ? el.value : el.textContent;
+    return parseFloat(v) || 0;
+  }
+  var rate  = getNum('rate');
+  var qty   = getNum('qty') || 1;
+  var cell  = document.getElementById('rowtotal-' + id);
+  if (cell) cell.textContent = fmt(rate * qty);
+  calcGrand();
+}
+
+function calcGrand() {
+  var grand = 0;
+  document.querySelectorAll('#items-body tr').forEach(function(row) {
+    var rEl = row.querySelector('[data-field="rate"]');
+    var qEl = row.querySelector('[data-field="qty"]');
+    if (!rEl || !qEl) return;
+    grand += (parseFloat(rEl.value) || 0) * (parseFloat(qEl.value) || 1);
+  });
+  document.getElementById('grand-total').textContent = fmt(grand);
+}
+
+function deleteRow(id) {
+  var row = document.getElementById('row-' + id);
+  if (row) row.remove();
+  renumber(); calcGrand();
+}
+
+function renumber() {
+  document.querySelectorAll('#items-body tr').forEach(function(r, i) {
+    r.querySelector('td:first-child').textContent = i + 1;
+  });
+}
+
+function clearAll() {
+  if (!confirm('Reset form and clear all rows?')) return;
+  document.getElementById('items-body').innerHTML = '';
+  rowId = 0;
+  ['cl-name','cl-place','q-subject'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('q-date').value = new Date().toISOString().split('T')[0];
+  updateMeta(); calcGrand();
+}
+
+function downloadPDF() {
+  var html = document.documentElement;
+  var page = document.getElementById('quotation-page');
+  toast('Generating PDF…');
+  function endPdfCapture() {
+    html.classList.remove('pdf-capture');
+  }
+  html.classList.add('pdf-capture');
+  window.scrollTo(0, 0);
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      html2canvas(page, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        letterRendering: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      }).then(function(canvas) {
+        var jsPDF = window.jspdf.jsPDF;
+        var pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        var pdfW = pdf.internal.pageSize.getWidth();
+        var pdfH = pdf.internal.pageSize.getHeight();
+        var cw = canvas.width;
+        var ch = canvas.height;
+        var sliceH = Math.round(1123 * (cw / 794));
+        if (sliceH < 16) sliceH = ch;
+
+        var firstPage = true;
+        for (var srcY = 0; srcY < ch; srcY += sliceH) {
+          if (!firstPage) pdf.addPage();
+          firstPage = false;
+          var cropH = Math.min(sliceH, ch - srcY);
+          var slab = document.createElement('canvas');
+          slab.width = cw;
+          slab.height = cropH;
+          var sctx = slab.getContext('2d');
+          sctx.fillStyle = '#ffffff';
+          sctx.fillRect(0, 0, cw, cropH);
+          sctx.drawImage(canvas, 0, srcY, cw, cropH, 0, 0, cw, cropH);
+          var sliceImg = slab.toDataURL('image/png');
+          var slicePdfH = pdfH * (cropH / sliceH);
+          pdf.addImage(sliceImg, 'PNG', 0, 0, pdfW, slicePdfH);
+        }
+
+        var name = (document.getElementById('cl-name').value.trim() || 'Quotation').replace(/[\r\n]+/g, ' ');
+        var date = document.getElementById('q-date').value || 'draft';
+        pdf.save('Shivatronics_Quote_' + name + '_' + date + '.pdf');
+        endPdfCapture();
+        toast('PDF saved!', true);
+      }).catch(function(err) {
+        endPdfCapture();
+        toast('PDF failed — try Print→Save as PDF, or open via a local web server.');
+        console.error(err);
+      });
+    });
+  });
+}
+
+function fmt(n) {
+  if (n === 0) return '₹0';
+  // Format with Indian comma system, max 2 decimal places
+  var rounded = Math.round(n * 100) / 100;
+  return '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits:0, maximumFractionDigits:2});
+}
+
+function toast(msg, ok) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (ok ? ' ok' : '');
+  setTimeout(function() { el.className = ''; }, 3000);
+}
+</script>
+</body>
+</html>

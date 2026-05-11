@@ -25,6 +25,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Verify production index (not dev /src/main.jsx)
+        run: |
+          grep -q 'assets/index-' dist/index.html || (echo 'dist/index.html missing hashed assets — build broken'; exit 1)
+          ! grep -q '/src/main.jsx' dist/index.html || (echo 'dist still has dev script src'; exit 1)
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

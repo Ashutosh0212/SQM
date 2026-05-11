@@ -216,6 +216,12 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 .terms-title { font-size:8px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#1d4ed8; margin-bottom:2px; }
 .terms-section ul { padding-left:12px; margin:0; }
 .terms-section ul li { font-size:9.5px; color:#334155; line-height:1.65; }
+.terms-editor-hint {
+  font-size:0.6rem; font-weight:500; letter-spacing:0.02em; text-transform:none; color:#64748b;
+  margin-bottom:4px; max-width:min(560px, 100%);
+  line-height:1.35;
+}
+.ctrl-group .ctrl-terms { width: min(560px, 100%); max-width: 100%; min-height: 6.5em; }
 
 /* ── BANK + SIGNATURE — pinned to bottom ── */
 .footer-row {
@@ -225,8 +231,20 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 }
 .bank-title { font-size:8px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#1d4ed8; margin-bottom:2px; }
 .bank-block p { font-size:9.5px; color:#334155; line-height:1.65; }
-.sign-block { text-align:center; font-size:9.5px; color:#334155; }
-.sign-line { border-top:1px solid #64748b; width:140px; margin:22px auto 3px; padding-top:3px; }
+.sign-block { text-align:center; font-size:9.5px; color:#334155; flex-shrink:0; }
+.sign-seal-wrap {
+  margin: 0 auto 4px;
+  max-width: 240px;
+  line-height: 0;
+}
+.sign-seal-img {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  margin: 0 auto;
+}
+.sign-line { border-top:1px solid #64748b; width:140px; margin:10px auto 3px; padding-top:3px; }
 
 /* ── DELETE BUTTON (Actions column hidden when printing) ── */
 .del-row {
@@ -577,6 +595,11 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
   <div class="ctrl-group"><label>City / Place</label><textarea id="cl-place" rows="2" placeholder="Chandrapur" class="ctrl-narrow"></textarea></div>
   <div class="ctrl-group"><label>Date</label><input type="date" id="q-date" class="ctrl-date"></div>
   <div class="ctrl-group"><label>Subject (optional)</label><textarea id="q-subject" rows="2" placeholder="Supply of Air Conditioners" class="ctrl-subj"></textarea></div>
+  <div class="ctrl-group" style="flex:1 1 100%; min-width:0;">
+    <label>Terms &amp; conditions</label>
+    <p class="terms-editor-hint">One line per bullet; leading “•” or “-” is optional. Updates the quotation preview below.</p>
+    <textarea id="q-terms" rows="6" class="ctrl-terms ctrl-wide" placeholder="Above rates are inclusive of GST"></textarea>
+  </div>
   <div class="editor-actions">
     <button class="btn btn-add"   onclick="addRow()">+ Add Item</button>
     <button type="button" class="btn btn-share" onclick="shareQuotation()">Share</button>
@@ -649,13 +672,7 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
 
       <div class="terms-section">
         <div class="terms-title">Terms &amp; Conditions</div>
-        <ul>
-          <li>Above rates are inclusive of GST</li>
-          <li>Warranty: 10 years on compressor</li>
-          <li>Delivery: For Wadi, Nagpur or at actual</li>
-          <li>Stand and installation charges are extra</li>
-          <li>Payment: 100% advance with purchase order</li>
-        </ul>
+        <ul id="disp-terms-list"></ul>
       </div>
 
       <div class="footer-row">
@@ -664,6 +681,9 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
           <p>Kotak Mahindra Bank<br>Account No: 0211197122<br>GST No: 27ABFPG1936K1ZM</p>
         </div>
         <div class="sign-block">
+          <div class="sign-seal-wrap" aria-hidden="true">
+            <img class="sign-seal-img" src="Shiavtronics sign and seal.png" alt="">
+          </div>
           <div class="sign-line">For Shivatronics</div>
           <div>(Authorised Signatory)</div>
         </div>
@@ -718,14 +738,45 @@ function hashCredential(user, password) {
   return crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg)).then(hexFromBuffer);
 }
 
+/** Default terms (one line per bullet in the editor). */
+var DEFAULT_TERMS_TEXT = [
+  'Above rates are inclusive of GST',
+  'Warranty: 10 years on compressor',
+  'Delivery: For Wadi, Nagpur or at actual',
+  'Stand and installation charges are extra',
+  'Payment: 100% advance with purchase order'
+].join('\n');
+
+function updateTerms() {
+  var ta = document.getElementById('q-terms');
+  var list = document.getElementById('disp-terms-list');
+  if (!ta || !list) return;
+  list.innerHTML = '';
+  var raw = String(ta.value || '');
+  raw.split(/\r?\n/).forEach(function(line) {
+    line = line.replace(/^\s*[\u2022\u00B7•\-\*]\s*/, '').trim();
+    if (!line) return;
+    var li = document.createElement('li');
+    li.textContent = line;
+    list.appendChild(li);
+  });
+}
+
 function initQuotationApp() {
   if (quotationAppInitialized) return;
   quotationAppInitialized = true;
 
   document.getElementById('q-date').value = new Date().toISOString().split('T')[0];
+  var termsEl = document.getElementById('q-terms');
+  if (termsEl && !String(termsEl.value || '').trim()) {
+    termsEl.value = DEFAULT_TERMS_TEXT;
+  }
   updateMeta();
-  ['cl-name','cl-place','q-date','q-subject'].forEach(function(id) {
-    document.getElementById(id).addEventListener('input', updateMeta);
+  updateTerms();
+  ['cl-name','cl-place','q-date','q-subject','q-terms'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', id === 'q-terms' ? updateTerms : updateMeta);
   });
   addRow('Voltas', '185 V Vertis Emerald', '1.5 Ton 5 Star Inverter', 33050.84, 39000, 1);
   addRow('Voltas', '183 V CAW', '1.5 Ton 3 Star Inverter', 25000, 29500, 1);
@@ -950,8 +1001,12 @@ function clearAll() {
   ['cl-name','cl-place','q-subject'].forEach(function(id) {
     document.getElementById(id).value = '';
   });
+  var termsReset = document.getElementById('q-terms');
+  if (termsReset) termsReset.value = DEFAULT_TERMS_TEXT;
   document.getElementById('q-date').value = new Date().toISOString().split('T')[0];
-  updateMeta(); calcGrand();
+  updateMeta();
+  updateTerms();
+  calcGrand();
 }
 
 function sanitizeShareFilename(base) {

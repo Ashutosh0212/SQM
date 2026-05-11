@@ -1,0 +1,731 @@
+﻿
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
+
+/* â”€â”€ EDITOR BAR â”€â”€ */
+.editor-panel {
+  background:#1c2a3a; color:#e2e8f0;
+  padding:0.8rem 1.4rem; display:flex; flex-wrap:wrap;
+  gap:0.65rem; align-items:flex-end;
+  border-bottom:3px solid #2563eb;
+  position:sticky; top:0; z-index:100;
+}
+.editor-panel h1 { width:100%; font-size:0.8rem; font-weight:700; color:#93c5fd; letter-spacing:0.05em; text-transform:uppercase; }
+.ctrl-group { display:flex; flex-direction:column; gap:0.2rem; }
+.ctrl-group label { font-size:0.6rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:#94a3b8; }
+.ctrl-group input {
+  background:#243447; border:1.5px solid #334155; border-radius:5px;
+  color:#e2e8f0; font-family:'Inter',sans-serif; font-size:0.78rem;
+  padding:0.34rem 0.58rem; outline:none; transition:border-color 0.15s;
+}
+.ctrl-group input:focus, .ctrl-group textarea:focus { border-color:#3b82f6; }
+.ctrl-group .ctrl-wide { width: 280px; max-width: 100%; }
+.ctrl-group .ctrl-narrow { width: 108px; max-width: 100%; }
+.ctrl-group .ctrl-date { width: 138px; max-width: 100%; }
+.ctrl-group .ctrl-subj { width: 195px; max-width: 100%; }
+.ctrl-group textarea {
+  background:#243447; border:1.5px solid #334155; border-radius:5px;
+  color:#e2e8f0; font-family:'Inter',sans-serif; font-size:0.78rem;
+  padding:0.34rem 0.58rem; outline:none; transition:border-color 0.15s;
+  resize:vertical; min-height:2.6em; line-height:1.35;
+}
+.editor-actions { display:flex; gap:0.45rem; align-items:flex-end; margin-left:auto; }
+.btn { padding:0.44rem 0.9rem; border-radius:6px; font-family:'Inter',sans-serif; font-size:0.77rem; font-weight:600; cursor:pointer; border:none; transition:all 0.15s; white-space:nowrap; }
+.btn-add   { background:#16a34a; color:white; } .btn-add:hover   { background:#15803d; }
+.btn-login { background:#2563eb; color:white; } .btn-login:hover { background:#1d4ed8; }
+.btn-print { background:#475569; color:white; } .btn-print:hover { background:#334155; }
+.btn-share  { background:#7c3aed; color:white; } .btn-share:hover  { background:#6d28d9; }
+.btn-clear { background:#dc2626; color:white; font-size:0.7rem; } .btn-clear:hover { background:#b91c1c; }
+.editor-row-hint {
+  flex: 1 1 100%;
+  width: 100%;
+  font-size: 0.62rem;
+  color: #94a3b8;
+  line-height: 1.38;
+  margin: 0;
+  padding: 0 0.15rem;
+}
+
+/* â”€â”€ PAGE WRAPPER â”€â”€ */
+#page-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 1.25rem;
+}
+
+/* â”€â”€ A4 PAGE â”€â”€
+   Logical width 794px â‰ˆ A4 preview. Outer #quotation-page holds the tiling letterhead;
+   inner #quotation-page-inner holds side padding + box-decoration-break: clone so the same
+   top/bottom padding is repeated on each printed page and content stays below the header band. */
+#quotation-page {
+  width: 794px;
+  min-height: 1123px;
+  height: auto;
+  position: relative;
+  box-sizing: border-box;
+  padding: 0;
+  background-color: #fff;
+  background-image: var(--quot-letterhead);
+  background-size: 794px 1123px;
+  background-repeat: repeat-y;
+  background-position: center top;
+  overflow: visible;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  display: block;
+}
+
+/* Padding lives here â€” box-decoration-break: clone repeats it on each printed page fragment
+   so line items are not drawn under the letterhead artwork on sheet 2, 3, â€¦ */
+#quotation-page-inner {
+  box-sizing: border-box;
+  padding: 248px 62px 58px;
+  min-height: 1123px;
+  display: block;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* Body column wraps .content-stack (quotation flows top â†’ bottom). */
+#content-area {
+  position: relative;
+  overflow: visible;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Quotations starts at top below header artwork (no vertical centering) */
+.content-stack {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0;
+}
+
+/* â”€â”€ TO / DATE â”€â”€ */
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.meta-row .to-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 84%;
+  padding-right: 4px;
+}
+.to-label { font-size:8.5px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#1d4ed8; margin-bottom:1px; }
+/* Name breaks only where user presses Enter in the To field â€” no auto-wrap on width */
+.to-name  { font-size:12.5px; font-weight:700; color:#0f172a; line-height:1.35;
+  white-space:pre; word-break:normal; overflow-wrap:normal; overflow-x:visible; }
+.to-place { font-size:10.5px; color:#475569;
+  white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; }
+.date-block { flex-shrink: 0; text-align: right; min-width: max-content; }
+.date-label { font-size:8.5px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#1d4ed8; margin-bottom:1px; }
+.date-val   { font-size:11px; color:#0f172a; }
+
+/* â”€â”€ SUBJECT â”€â”€ */
+.subject-line { font-size:10.5px; color:#0f172a; margin-bottom:8px; display:none; flex-shrink:0;
+  white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; line-height:1.4; }
+.subject-line strong { font-weight:700; }
+
+/* â”€â”€ MULTI QUOTATION BLOCKS â”€â”€ */
+#quote-blocks {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.quote-block {
+  flex-shrink: 0;
+}
+.quote-block + .quote-block {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed #94a3b8;
+}
+.quote-block-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.quote-block-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1d4ed8;
+}
+.btn-quote-remove {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.28rem 0.52rem;
+  border-radius: 5px;
+  border: 1px solid #f87171;
+  background: rgba(254, 242, 242, 0.95);
+  color: #b91c1c;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.btn-quote-remove:hover {
+  background: #fecaca;
+}
+.btn-quote-remove:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.quote-block-notes {
+  display: block;
+  width: 100%;
+  min-height: 1.35em;
+  margin-bottom: 6px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.quote-block.is-active {
+  outline: 2px solid rgba(37, 99, 235, 0.4);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* â”€â”€ ITEMS TABLE â”€â”€ */
+/* Darker borders for quotation tables */
+.items-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  margin-bottom: 5px;
+  flex-shrink: 0;
+}
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+  table-layout: fixed;
+  min-width: 666px;
+  border: 1.5px solid #0f172a;
+}
+.items-table thead { display: table-header-group; }
+.items-table tbody { display: table-row-group; }
+.items-table thead tr { background:#1e3a5f; color:white; }
+.items-table thead th {
+  padding:5px 5px; font-size:7.5px; font-weight:700;
+  letter-spacing:0.04em; text-transform:uppercase;
+  text-align:left; border:1.5px solid #0f172a;
+  overflow:visible;
+}
+.items-table thead th.r { text-align:right; }
+
+.items-table tbody tr { border-bottom:1.5px solid #475569; }
+.items-table tbody tr:nth-child(even) { background:rgba(219,234,254,0.16); }
+.items-table tbody td {
+  padding:5px 6px; color:#0f172a; border:1.5px solid #475569;
+  vertical-align:top; overflow:visible;
+}
+.items-table tbody td.r {
+  text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;
+  vertical-align:top;
+  overflow:visible;
+  padding:5px 8px;
+}
+.items-table tbody td.wrap { vertical-align:top; white-space:normal; word-break:break-word; overflow-wrap:anywhere; }
+.items-table tbody td.bold { font-weight:700; }
+
+/* Number inputs â€” right-aligned, no spin buttons (extra vertical room avoids html2canvas clipping digits) */
+.items-table tbody td input[type="number"] {
+  width:100%; min-width:0; border:none; background:transparent;
+  font-family:'Inter',sans-serif; font-size:10px; color:#0f172a;
+  outline:none; padding:4px 4px 4px 0; text-align:right;
+  line-height:1.5; min-height:22px; box-sizing:border-box;
+  overflow:visible;
+  -moz-appearance:textfield;
+  -webkit-appearance:none; appearance:none;
+}
+.items-table tbody td input[type="number"]::-webkit-outer-spin-button,
+.items-table tbody td input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; }
+.items-table tbody td input[type="number"]:focus { background:rgba(219,234,254,0.45); border-radius:2px; }
+
+/* Contenteditable divs for text columns (wrap naturally) */
+.cell-text {
+  width:100%; border:none; background:transparent; display:block;
+  font-family:'Inter',sans-serif; font-size:10px; color:#0f172a;
+  outline:none; padding:0; min-height:14px;
+  white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere;
+  cursor:text; line-height:1.4;
+}
+.cell-text:focus { background:rgba(219,234,254,0.45); border-radius:2px; }
+.cell-text:empty:before { content:attr(data-placeholder); color:#94a3b8; pointer-events:none; }
+
+/* Column widths â€” fixed; desc col takes remainder of ~670px content width */
+.col-sr    { width:24px; }
+.col-make  { width:64px; }
+.col-model { width:72px; }
+.col-desc  { min-width: 0; }
+.col-basic { width:94px; }
+.col-rate  { width:90px; }
+.col-qty   { width:54px; }
+.col-total { width:86px; }
+.col-del   { width:22px; } /* screen-only; column hidden in print */
+
+/* â”€â”€ TOTALS â”€â”€ */
+.total-section { display:flex; justify-content:flex-end; margin-bottom:10px; flex-shrink:0; }
+.total-box { width:220px; border:1px solid #cbd5e1; border-radius:4px; overflow:visible; font-size:10px; }
+.t-row { display:flex; justify-content:space-between; padding:4px 8px; border-bottom:1px solid #e2e8f0; }
+.t-row:last-child { border-bottom:none; }
+.t-row .t-l { color:#475569; }
+.t-row .t-v { font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap;
+  overflow:visible; max-width:none; flex-shrink:0; margin-left:8px; }
+.t-row.grand { background:#1e3a5f; color:white; }
+.t-row.grand .t-l { color:rgba(255,255,255,0.85); font-weight:700; }
+.t-row.grand .t-v { color:white; font-weight:700; font-size:10.5px; }
+
+/* â”€â”€ TERMS â”€â”€ */
+.terms-section { flex-shrink:0; margin-bottom:4px; }
+.terms-title { font-size:8px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#1d4ed8; margin-bottom:2px; }
+.terms-section ul { padding-left:12px; margin:0; }
+.terms-section ul li { font-size:9.5px; color:#334155; line-height:1.65; }
+.terms-editor-hint {
+  font-size:0.6rem; font-weight:500; letter-spacing:0.02em; text-transform:none; color:#64748b;
+  margin-bottom:4px; max-width:min(560px, 100%);
+  line-height:1.35;
+}
+.ctrl-group .ctrl-terms { width: min(560px, 100%); max-width: 100%; min-height: 6.5em; }
+
+/* â”€â”€ BANK + SIGNATURE â€” pinned to bottom â”€â”€ */
+.footer-row {
+  display:flex; justify-content:space-between; align-items:flex-end;
+  margin-top:14px; padding-top:6px; flex-shrink:0;
+  margin-bottom: 0;
+}
+.bank-title { font-size:8px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#1d4ed8; margin-bottom:2px; }
+.bank-block p { font-size:9.5px; color:#334155; line-height:1.65; }
+.sign-block { text-align:center; font-size:9.5px; color:#334155; flex-shrink:0; }
+.sign-seal-wrap {
+  margin: 0 auto 4px;
+  max-width: 240px;
+  line-height: 0;
+}
+.sign-seal-img {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  margin: 0 auto;
+}
+.sign-line { border-top:1px solid #64748b; width:140px; margin:10px auto 3px; padding-top:3px; }
+
+/* â”€â”€ DELETE BUTTON (Actions column hidden when printing) â”€â”€ */
+.del-row {
+  background:none; border:none; cursor:pointer;
+  color:#dc2626; font-size:12px; font-weight:700; line-height:1;
+  width:18px; height:18px; border-radius:3px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.12s; padding:0;
+}
+.del-row:hover { background:#fecaca; color:#b91c1c; }
+
+/* Hide Actions column while rasterising quotation to PDF (share) */
+html.pdf-capture .items-table col.del-col,
+html.pdf-capture .items-table thead th.del-col,
+html.pdf-capture .items-table tbody td.del-col {
+  display: none !important;
+  visibility: collapse !important;
+  width: 0 !important; min-width: 0 !important;
+  padding: 0 !important; border-width: 0 !important;
+}
+html.pdf-capture .screen-only-print-hide {
+  display: none !important;
+}
+html.pdf-capture .quote-block.is-active {
+  outline: none !important;
+}
+
+/* Force full desktop A4 width while capturing (overrides narrow-viewport/mobile layout) */
+html.pdf-capture-a4 body {
+  overflow-x: auto !important;
+}
+html.pdf-capture-a4 #page-wrapper {
+  padding: 1.25rem !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  min-width: 820px !important;
+}
+html.pdf-capture-a4 #quotation-page {
+  width: 794px !important;
+  max-width: 794px !important;
+  min-width: 794px !important;
+  min-height: 1123px !important;
+  height: auto !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  background-size: 794px 1123px !important;
+  background-repeat: repeat-y !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.28) !important;
+}
+html.pdf-capture-a4 #quotation-page-inner {
+  padding: 248px 62px 58px !important;
+  padding-top: 248px !important;
+  padding-left: 62px !important;
+  padding-right: 62px !important;
+  padding-bottom: 58px !important;
+  box-sizing: border-box !important;
+  min-height: 1123px !important;
+  -webkit-box-decoration-break: clone !important;
+  box-decoration-break: clone !important;
+}
+html.pdf-capture-a4 #content-area {
+  min-height: 0 !important;
+}
+html.pdf-capture-a4 .items-table {
+  min-width: 0 !important;
+}
+html.pdf-capture-a4 .items-table-wrap {
+  overflow-x: visible !important;
+}
+html.pdf-capture-a4 .meta-row {
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+}
+html.pdf-capture-a4 .meta-row .to-col {
+  max-width: 84% !important;
+}
+html.pdf-capture-a4 .date-block {
+  text-align: right !important;
+}
+html.pdf-capture-a4 .footer-row {
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  gap: 0 !important;
+}
+html.pdf-capture-a4 .sign-block {
+  align-self: auto !important;
+  max-width: none !important;
+}
+html.pdf-capture-a4 .total-box {
+  width: 220px !important;
+  max-width: none !important;
+}
+html.pdf-capture-a4 .del-row {
+  width: 18px !important;
+  height: 18px !important;
+  min-height: 0 !important;
+  font-size: 12px !important;
+}
+html.pdf-capture-a4 .items-table tbody td.r {
+  padding-top: 7px !important;
+  padding-bottom: 9px !important;
+  vertical-align: middle !important;
+}
+html.pdf-capture-a4 .items-table tbody td input[type="number"] {
+  min-height: 28px !important;
+  line-height: normal !important;
+  padding: 8px 4px 8px 0 !important;
+  overflow: visible !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  box-sizing: border-box !important;
+}
+
+
+/* â”€â”€ MOBILE / NARROW VIEWPORTS (phones & small laptop windows â€” PDF/share still renders full A4 in capture) â”€â”€ */
+@media (max-width: 900px) {
+  #page-wrapper {
+    padding: max(0.5rem, env(safe-area-inset-left, 0px)) max(0.5rem, env(safe-area-inset-right, 0px));
+    overflow-x: hidden;
+  }
+  #quotation-page {
+    --pw: min(794px, calc(100vw - 1rem));
+    width: var(--pw);
+    min-height: calc(var(--pw) * 1123 / 794);
+    padding: 0;
+    background-size: 100% auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 22px rgba(0,0,0,0.22);
+  }
+  #quotation-page-inner {
+    padding-top: calc(var(--pw) * 248 / 794);
+    padding-left: calc(var(--pw) * 62 / 794);
+    padding-right: calc(var(--pw) * 62 / 794);
+    padding-bottom: calc(var(--pw) * 58 / 794);
+    min-height: calc(var(--pw) * 1123 / 794);
+    box-sizing: border-box;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+  #content-area { min-height: 0; }
+  .editor-panel {
+    padding: max(0.65rem, env(safe-area-inset-top, 0px)) max(0.75rem, env(safe-area-inset-right, 0px)) 0.65rem max(0.75rem, env(safe-area-inset-left, 0px));
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+  .editor-panel h1 {
+    font-size: 0.72rem;
+    letter-spacing: 0.045em;
+  }
+  /* Streamlined toolbar: primary action full-width, utilities in pairs */
+  .editor-actions {
+    margin-left: 0;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    align-self: stretch;
+  }
+  .editor-actions .btn-add {
+    grid-column: 1 / -1;
+  }
+  .ctrl-group { flex: 1 1 160px; min-width: 0; max-width: 100%; }
+  .ctrl-group .ctrl-wide,
+  .ctrl-group .ctrl-subj { width: 100%; max-width: 100%; }
+}
+@media (max-width: 640px) {
+  .editor-panel { padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px)); }
+  .editor-panel .ctrl-group input,
+  .editor-panel .ctrl-group textarea,
+  #login-form input[type="text"],
+  #login-form input[type="password"] {
+    font-size: 16px;
+  }
+  .items-table tbody td input[type="number"] { font-size: 14px; min-height: 28px; }
+  /* Wider swipe area for horizontal table scroll */
+  .items-table-wrap {
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+  }
+  .del-row {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  .btn { white-space: normal; text-align: center; line-height: 1.25; padding: 0.52rem 0.68rem; min-height: 44px; }
+  body { padding-bottom: env(safe-area-inset-bottom); }
+}
+@media (max-width: 520px) {
+  .footer-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .sign-block { align-self: stretch; max-width: 100%; }
+  .meta-row .to-col { max-width: 100%; }
+  /* Let long client names wrap on very narrow screens while keeping deliberate line breaks */
+  .to-name {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .total-section { justify-content: stretch; padding: 0 2px; }
+  .total-box { width: 100%; max-width: none; }
+  .meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .date-block { text-align: left; }
+}
+
+/* â”€â”€ PRINT â”€â”€ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  #login-screen { display: none !important; }
+  .editor-panel,
+  .panel-left,
+  .panel-right-toolbar { display: none !important; }
+  .app-shell {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    background: transparent !important;
+  }
+  .panel-right {
+    display: block !important;
+    min-height: 0 !important;
+  }
+  .live-preview-wrap {
+    overflow: visible !important;
+    padding: 0 !important;
+    display: block !important;
+    flex: none !important;
+    min-height: 0 !important;
+  }
+  #page-wrapper { padding:0; justify-content:flex-start !important; }
+  #quotation-page {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    width: 210mm !important;
+    height: auto !important;
+    overflow: visible !important;
+    background-size: 210mm 297mm !important;
+    background-repeat: repeat-y !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  #quotation-page-inner {
+    padding-top: 65.6mm !important;
+    padding-left: 16.4mm !important;
+    padding-right: 16.4mm !important;
+    padding-bottom: 15.35mm !important;
+    box-sizing: border-box !important;
+    -webkit-box-decoration-break: clone !important;
+    box-decoration-break: clone !important;
+    min-height: 0 !important;
+  }
+  #content-area { min-height: 0 !important; }
+  /* Kept small blocks together; allow text/table to flow â€” no avoid on large regions */
+  .total-section .total-box {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .footer-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  /* Remove Actions column entirely (no empty gutter) */
+  .items-table col.del-col,
+  .items-table thead th.del-col,
+  .items-table tbody td.del-col {
+    display: none !important;
+    visibility: collapse !important;
+    width: 0 !important; min-width: 0 !important;
+    padding: 0 !important; border-width: 0 !important;
+  }
+  .screen-only-print-hide {
+    display: none !important;
+  }
+  .quote-block.is-active {
+    outline: none !important;
+  }
+  .cell-text:empty:before { content:''; }
+  .items-table tbody td input[type="number"]::-webkit-outer-spin-button,
+  .items-table tbody td input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; }
+}
+
+/* â”€â”€ TOAST â”€â”€ */
+#toast { position:fixed; bottom:1.5rem; right:1.5rem; background:#1e3a5f; color:white; padding:0.5rem 0.85rem; border-radius:6px; font-size:0.76rem; font-weight:500; transform:translateY(80px); opacity:0; transition:all 0.3s; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,0.2); }
+#toast.show { transform:translateY(0); opacity:1; }
+#toast.ok { background:#15803d; }
+@media (max-width: 640px) {
+  #toast {
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+/* â”€â”€ LOGIN (client-side gate â€” see script header for caveats on GitHub Pages) â”€â”€ */
+#login-screen {
+  position: fixed; inset: 0;
+  background: radial-gradient(1200px 800px at 30% -10%, rgba(37,99,235,0.35), transparent),
+              linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #0f172a 100%);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10001;
+  padding: max(1.5rem, env(safe-area-inset-top, 0px)) max(1.5rem, env(safe-area-inset-right, 0px))
+           max(1.5rem, env(safe-area-inset-bottom, 0px)) max(1.5rem, env(safe-area-inset-left, 0px));
+}
+#login-screen[hidden] { display: none !important; }
+.login-card {
+  width: 100%; max-width: 380px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.65rem 1.5rem 1.4rem;
+  box-shadow: 0 22px 50px rgba(0,0,0,0.35);
+}
+.login-card h2 {
+  font-size: 1.1rem; font-weight: 700;
+  color: #0f172a; letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+.login-sub {
+  font-size: 0.76rem; color: #64748b;
+  margin-bottom: 1.15rem;
+  line-height: 1.4;
+}
+#login-form { display:flex; flex-direction:column; gap:0.75rem; }
+#login-form label {
+  font-size: 0.62rem; font-weight:600; letter-spacing:0.08em;
+  text-transform: uppercase; color: #475569;
+  display:flex; flex-direction:column; gap:0.35rem;
+}
+#login-form input[type="text"],
+#login-form input[type="password"] {
+  padding: 0.5rem 0.62rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+#login-form input:focus {
+  border-color: #2563eb;
+}
+#login-err {
+  font-size: 0.73rem;
+  color: #b91c1c;
+  min-height: 1.05rem;
+  margin: 0;
+}
+#login-form .btn-submit {
+  margin-top: 0.35rem;
+  width: 100%; padding: 0.52rem;
+  justify-content:center;
+}
+.login-note {
+  font-size: 0.65rem; color: #94a3b8;
+  margin-top: 1rem;
+  line-height: 1.45;
+}
+
+/* React shell: left sidebar (~30%) */
+.sidebar-editor {
+  position: relative;
+  top: auto;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-bottom: none;
+  border-right: 3px solid #2563eb;
+  -webkit-overflow-scrolling: touch;
+}
+.sidebar-editor .ctrl-group .ctrl-wide,
+.sidebar-editor .ctrl-group .ctrl-narrow,
+.sidebar-editor .ctrl-group .ctrl-date,
+.sidebar-editor .ctrl-group .ctrl-subj,
+.sidebar-editor .ctrl-group .ctrl-terms {
+  width: 100%;
+  max-width: 100%;
+}
+.sidebar-editor .editor-actions {
+  margin-left: 0;
+  width: 100%;
+  flex-wrap: wrap;
+}
+.sidebar-editor .editor-actions .btn-add {
+  flex: 1 1 42%;
+  min-width: 112px;
+}

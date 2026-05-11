@@ -100,22 +100,6 @@ export default function App() {
     }
   }
 
-  async function handleDownloadPdf() {
-    try {
-      const blob = await buildQuotationPdfBlob(pageRef.current);
-      const stem = quotationPdfStem(state);
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `${stem}.pdf`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      showToast('Download started.');
-    } catch (e) {
-      console.error(e);
-      showToast('Download failed.', 'err');
-    }
-  }
-
   if (!authed) {
     return <LoginScreen onAuthenticated={() => setAuthed(true)} />;
   }
@@ -131,8 +115,6 @@ export default function App() {
           <EditorSidebar
             meta={state.meta}
             dispatch={dispatch}
-            onShare={handleShare}
-            onPrint={() => window.print()}
             onReset={handleReset}
             onSignOut={signOut}
           />
@@ -145,9 +127,17 @@ export default function App() {
               type="button"
               className="btn btn-share"
               style={{ padding: '0.35rem 0.65rem', fontSize: '0.72rem' }}
-              onClick={handleDownloadPdf}
+              onClick={handleShare}
             >
-              Download PDF
+              Share
+            </button>
+            <button
+              type="button"
+              className="btn btn-print"
+              style={{ padding: '0.35rem 0.65rem', fontSize: '0.72rem' }}
+              onClick={() => window.print()}
+            >
+              &#128438; Print
             </button>
           </div>
           <div className="live-preview-wrap" id="page-wrapper">

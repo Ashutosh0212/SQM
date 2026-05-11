@@ -1,11 +1,4 @@
-export function EditorSidebar({
-  meta,
-  dispatch,
-  onShare,
-  onPrint,
-  onReset,
-  onSignOut,
-}) {
+export function EditorSidebar({ meta, dispatch, onReset, onSignOut }) {
   return (
     <div className="editor-panel sidebar-editor">
       <h1>Shivatronics — Quotation Builder</h1>
@@ -91,12 +84,6 @@ export function EditorSidebar({
           onClick={() => dispatch({ type: 'ADD_BLOCK' })}
         >
           + Add quotation table
-        </button>
-        <button type="button" className="btn btn-share" onClick={onShare}>
-          Share
-        </button>
-        <button type="button" className="btn btn-print" onClick={onPrint}>
-          &#128438; Print
         </button>
         <button type="button" className="btn btn-clear" onClick={onReset}>
           &#10005; Reset

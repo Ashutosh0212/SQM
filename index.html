@@ -43,21 +43,30 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 .btn-print { background:#475569; color:white; } .btn-print:hover { background:#334155; }
 .btn-share  { background:#7c3aed; color:white; } .btn-share:hover  { background:#6d28d9; }
 .btn-clear { background:#dc2626; color:white; font-size:0.7rem; } .btn-clear:hover { background:#b91c1c; }
+.editor-row-hint {
+  flex: 1 1 100%;
+  width: 100%;
+  font-size: 0.62rem;
+  color: #94a3b8;
+  line-height: 1.38;
+  margin: 0;
+  padding: 0 0.15rem;
+}
 
 /* ── PAGE WRAPPER ── */
 #page-wrapper { display:flex; justify-content:center; padding:1.25rem; }
 
 /* ── A4 PAGE ──
-   Logical width 794px ≈ A4 preview. Height grows with content; min-height = one sheet.
-   Letterhead tiles every 1123px vertically so multi-page preview/print repeats header+footer artwork.
-   PNG file must sit next to this HTML (edit url if renamed). */
+   Logical width 794px ≈ A4 preview. Outer #quotation-page holds the tiling letterhead;
+   inner #quotation-page-inner holds side padding + box-decoration-break: clone so the same
+   top/bottom padding is repeated on each printed page and content stays below the header band. */
 #quotation-page {
   width: 794px;
   min-height: 1123px;
   height: auto;
   position: relative;
   box-sizing: border-box;
-  padding: 248px 62px 58px; /* ~3–4 lines below header band; higher footer block */
+  padding: 0;
   background-color: #fff;
   background-image: url('Shivatronics letterhead A4.png');
   background-size: 794px 1123px;
@@ -66,8 +75,18 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
   overflow: visible;
   font-family: 'Inter', sans-serif;
   box-shadow: 0 8px 40px rgba(0,0,0,0.3);
-  display: flex;
-  flex-direction: column;
+  display: block;
+}
+
+/* Padding lives here — box-decoration-break: clone repeats it on each printed page fragment
+   so line items are not drawn under the letterhead artwork on sheet 2, 3, … */
+#quotation-page-inner {
+  box-sizing: border-box;
+  padding: 248px 62px 58px;
+  min-height: 1123px;
+  display: block;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 /* Body column wraps .content-stack (quotation flows top → bottom). */
@@ -119,7 +138,71 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
   white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; line-height:1.4; }
 .subject-line strong { font-weight:700; }
 
+/* ── MULTI QUOTATION BLOCKS ── */
+#quote-blocks {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.quote-block {
+  flex-shrink: 0;
+}
+.quote-block + .quote-block {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed #94a3b8;
+}
+.quote-block-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.quote-block-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1d4ed8;
+}
+.btn-quote-remove {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.28rem 0.52rem;
+  border-radius: 5px;
+  border: 1px solid #f87171;
+  background: rgba(254, 242, 242, 0.95);
+  color: #b91c1c;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.btn-quote-remove:hover {
+  background: #fecaca;
+}
+.btn-quote-remove:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.quote-block-notes {
+  display: block;
+  width: 100%;
+  min-height: 1.35em;
+  margin-bottom: 6px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.quote-block.is-active {
+  outline: 2px solid rgba(37, 99, 235, 0.4);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
 /* ── ITEMS TABLE ── */
+/* Darker borders for quotation tables */
 .items-table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -136,6 +219,7 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
   flex-shrink: 0;
   table-layout: fixed;
   min-width: 666px;
+  border: 1.5px solid #0f172a;
 }
 .items-table thead { display: table-header-group; }
 .items-table tbody { display: table-row-group; }
@@ -143,15 +227,15 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 .items-table thead th {
   padding:5px 5px; font-size:7.5px; font-weight:700;
   letter-spacing:0.04em; text-transform:uppercase;
-  text-align:left; border:1px solid #1e3a5f;
+  text-align:left; border:1.5px solid #0f172a;
   overflow:visible;
 }
 .items-table thead th.r { text-align:right; }
 
-.items-table tbody tr { border-bottom:1px solid #cbd5e1; }
+.items-table tbody tr { border-bottom:1.5px solid #475569; }
 .items-table tbody tr:nth-child(even) { background:rgba(219,234,254,0.16); }
 .items-table tbody td {
-  padding:5px 6px; color:#0f172a; border:1px solid #e2e8f0;
+  padding:5px 6px; color:#0f172a; border:1.5px solid #475569;
   vertical-align:top; overflow:visible;
 }
 .items-table tbody td.r {
@@ -192,7 +276,7 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 .col-sr    { width:24px; }
 .col-make  { width:64px; }
 .col-model { width:72px; }
-.col-desc  { }              /* takes remaining space */
+.col-desc  { min-width: 0; }
 .col-basic { width:94px; }
 .col-rate  { width:90px; }
 .col-qty   { width:54px; }
@@ -265,6 +349,12 @@ html.pdf-capture .items-table tbody td.del-col {
   width: 0 !important; min-width: 0 !important;
   padding: 0 !important; border-width: 0 !important;
 }
+html.pdf-capture .screen-only-print-hide {
+  display: none !important;
+}
+html.pdf-capture .quote-block.is-active {
+  outline: none !important;
+}
 
 /* Force full desktop A4 width while capturing (overrides narrow-viewport/mobile layout) */
 html.pdf-capture-a4 body {
@@ -282,15 +372,22 @@ html.pdf-capture-a4 #quotation-page {
   min-width: 794px !important;
   min-height: 1123px !important;
   height: auto !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  background-size: 794px 1123px !important;
+  background-repeat: repeat-y !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.28) !important;
+}
+html.pdf-capture-a4 #quotation-page-inner {
   padding: 248px 62px 58px !important;
   padding-top: 248px !important;
   padding-left: 62px !important;
   padding-right: 62px !important;
   padding-bottom: 58px !important;
   box-sizing: border-box !important;
-  background-size: 794px 1123px !important;
-  background-repeat: repeat-y !important;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.28) !important;
+  min-height: 1123px !important;
+  -webkit-box-decoration-break: clone !important;
+  box-decoration-break: clone !important;
 }
 html.pdf-capture-a4 #content-area {
   min-height: 0 !important;
@@ -357,13 +454,20 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
     --pw: min(794px, calc(100vw - 1rem));
     width: var(--pw);
     min-height: calc(var(--pw) * 1123 / 794);
+    padding: 0;
+    background-size: 100% auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 22px rgba(0,0,0,0.22);
+  }
+  #quotation-page-inner {
     padding-top: calc(var(--pw) * 248 / 794);
     padding-left: calc(var(--pw) * 62 / 794);
     padding-right: calc(var(--pw) * 62 / 794);
     padding-bottom: calc(var(--pw) * 58 / 794);
-    background-size: 100% auto;
-    border-radius: 8px;
-    box-shadow: 0 4px 22px rgba(0,0,0,0.22);
+    min-height: calc(var(--pw) * 1123 / 794);
+    box-sizing: border-box;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
   #content-area { min-height: 0; }
   #editor {
@@ -454,13 +558,20 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
     overflow: visible !important;
     background-size: 210mm 297mm !important;
     background-repeat: repeat-y !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  #quotation-page-inner {
     padding-top: 65.6mm !important;
     padding-left: 16.4mm !important;
     padding-right: 16.4mm !important;
     padding-bottom: 15.35mm !important;
     box-sizing: border-box !important;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+    -webkit-box-decoration-break: clone !important;
+    box-decoration-break: clone !important;
+    min-height: 0 !important;
   }
   #content-area { min-height: 0 !important; }
   /* Kept small blocks together; allow text/table to flow — no avoid on large regions */
@@ -480,6 +591,12 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
     visibility: collapse !important;
     width: 0 !important; min-width: 0 !important;
     padding: 0 !important; border-width: 0 !important;
+  }
+  .screen-only-print-hide {
+    display: none !important;
+  }
+  .quote-block.is-active {
+    outline: none !important;
   }
   .cell-text:empty:before { content:''; }
   .items-table tbody td input[type="number"]::-webkit-outer-spin-button,
@@ -600,8 +717,10 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
     <p class="terms-editor-hint">One line per bullet; leading “•” or “-” is optional. Updates the quotation preview below.</p>
     <textarea id="q-terms" rows="6" class="ctrl-terms ctrl-wide" placeholder="Above rates are inclusive of GST"></textarea>
   </div>
+  <p class="editor-row-hint">+ Add Item inserts a line in the quotation outlined in blue (click a table to switch). + Add quotation table adds another full pricing grid and its own total for multiple quotes in one PDF.</p>
   <div class="editor-actions">
-    <button class="btn btn-add"   onclick="addRow()">+ Add Item</button>
+    <button type="button" class="btn btn-add" onclick="addRow()">+ Add Item</button>
+    <button type="button" class="btn btn-add" onclick="addQuoteBlockSection()">+ Add quotation table</button>
     <button type="button" class="btn btn-share" onclick="shareQuotation()">Share</button>
     <button class="btn btn-print" onclick="window.print()">&#128438; Print</button>
     <button class="btn btn-clear" onclick="clearAll()">&#10005; Reset</button>
@@ -612,6 +731,7 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
 <!-- ═══ QUOTATION PAGE ═══ -->
 <div id="page-wrapper">
   <div id="quotation-page">
+    <div id="quotation-page-inner">
     <div id="content-area">
       <div class="content-stack">
 
@@ -631,7 +751,46 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
         <strong>Sub:</strong> <span id="disp-subject-text"></span>
       </div>
 
-      <div class="items-table-wrap">
+      <div id="quote-blocks"></div>
+
+      <div class="terms-section">
+        <div class="terms-title">Terms &amp; Conditions</div>
+        <ul id="disp-terms-list"></ul>
+      </div>
+
+      <div class="footer-row">
+        <div class="bank-block">
+          <div class="bank-title">Bank Details</div>
+          <p>Kotak Mahindra Bank<br>Account No: 0211197122<br>GST No: 27ABFPG1936K1ZM</p>
+        </div>
+        <div class="sign-block">
+          <div class="sign-seal-wrap" aria-hidden="true">
+            <img class="sign-seal-img" src="Shiavtronics sign and seal.png" alt="">
+          </div>
+          <div class="sign-line">For Shivatronics</div>
+          <div>(Authorised Signatory)</div>
+        </div>
+      </div>
+
+      </div>
+
+    </div><!-- /#content-area -->
+    </div><!-- /#quotation-page-inner -->
+  </div>
+</div>
+
+</div><!-- /#app-main -->
+
+<div id="toast"></div>
+
+<template id="tpl-quote-block">
+  <section class="quote-block" data-quote-block-id="">
+    <div class="quote-block-bar screen-only-print-hide">
+      <span class="quote-block-label">Quotation</span>
+      <button type="button" class="btn-quote-remove" title="Remove this quotation table">Remove table</button>
+    </div>
+    <div class="quote-block-notes cell-text" contenteditable="true" spellcheck="true" data-placeholder="Optional heading or notes above this quotation (e.g. option B, revised scope)…"></div>
+    <div class="items-table-wrap">
       <table class="items-table">
         <colgroup>
           <col class="col-sr">
@@ -657,47 +816,19 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
             <th class="col-del del-col" aria-label="Actions"></th>
           </tr>
         </thead>
-        <tbody id="items-body"></tbody>
+        <tbody class="qb-tbody"></tbody>
       </table>
-      </div>
-
-      <div class="total-section">
-        <div class="total-box">
-          <div class="t-row grand">
-            <span class="t-l">Total</span>
-            <span class="t-v" id="grand-total">&#8377;0</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="terms-section">
-        <div class="terms-title">Terms &amp; Conditions</div>
-        <ul id="disp-terms-list"></ul>
-      </div>
-
-      <div class="footer-row">
-        <div class="bank-block">
-          <div class="bank-title">Bank Details</div>
-          <p>Kotak Mahindra Bank<br>Account No: 0211197122<br>GST No: 27ABFPG1936K1ZM</p>
-        </div>
-        <div class="sign-block">
-          <div class="sign-seal-wrap" aria-hidden="true">
-            <img class="sign-seal-img" src="Shiavtronics sign and seal.png" alt="">
-          </div>
-          <div class="sign-line">For Shivatronics</div>
-          <div>(Authorised Signatory)</div>
-        </div>
-      </div>
-
-      </div>
-
     </div>
-  </div>
-</div>
-
-</div><!-- /#app-main -->
-
-<div id="toast"></div>
+    <div class="total-section">
+      <div class="total-box">
+        <div class="t-row grand">
+          <span class="t-l">Total</span>
+          <span class="t-v qb-grand-total">&#8377;0</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>
 
 <script>
 
@@ -707,6 +838,10 @@ var PDF_RASTER_SCALE = 1.75;
 var PDF_JPEG_QUALITY = 0.88;
 
 var rowId = 0;
+/** Monotonic block ids (never reused after delete — stable row anchors). */
+var quoteBlockCounter = 0;
+var activeQuoteBlockId = 1;
+var quoteBlockListenersBound = false;
 var quotationAppInitialized = false;
 
 /** ── LOGIN (GitHub Pages = static-only; realistic expectations) ──
@@ -744,7 +879,8 @@ var DEFAULT_TERMS_TEXT = [
   'Warranty: 10 years on compressor',
   'Delivery: For Wadi, Nagpur or at actual',
   'Stand and installation charges are extra',
-  'Payment: 100% advance with purchase order'
+  'Payment: 100% advance with purchase order',
+  'Validity of the offer — valid from this date: __________ to date: __________ (please fill both dates).'
 ].join('\n');
 
 function updateTerms() {
@@ -778,8 +914,101 @@ function initQuotationApp() {
     if (!el) return;
     el.addEventListener('input', id === 'q-terms' ? updateTerms : updateMeta);
   });
-  addRow('Voltas', '185 V Vertis Emerald', '1.5 Ton 5 Star Inverter', 33050.84, 39000, 1);
-  addRow('Voltas', '183 V CAW', '1.5 Ton 3 Star Inverter', 25000, 29500, 1);
+  bindQuoteBlockListenersOnce();
+  var qb = document.getElementById('quote-blocks');
+  if (qb && qb.children.length === 0) {
+    quoteBlockCounter = 0;
+    rowId = 0;
+    addQuoteBlockSection(false);
+    addRow('Voltas', '185 V Vertis Emerald', '1.5 Ton 5 Star Inverter', 33050.84, 39000, 1);
+    addRow('Voltas', '183 V CAW', '1.5 Ton 3 Star Inverter', 25000, 29500, 1);
+  } else {
+    refreshQuoteBlockLabels();
+    calcGrand();
+  }
+}
+
+function bindQuoteBlockListenersOnce() {
+  if (quoteBlockListenersBound) return;
+  quoteBlockListenersBound = true;
+  var root = document.getElementById('quote-blocks');
+  if (!root) return;
+  root.addEventListener('focusin', function(ev) {
+    var sec = ev.target.closest('.quote-block');
+    if (!sec) return;
+    var bid = parseInt(sec.getAttribute('data-quote-block-id'), 10);
+    if (!isNaN(bid)) setActiveQuoteBlockId(bid);
+  });
+}
+
+function setActiveQuoteBlockId(bid) {
+  activeQuoteBlockId = bid;
+  document.querySelectorAll('#quote-blocks .quote-block').forEach(function(el) {
+    var id = parseInt(el.getAttribute('data-quote-block-id'), 10);
+    el.classList.toggle('is-active', id === bid);
+  });
+}
+
+function refreshQuoteBlockLabels() {
+  var blocks = document.querySelectorAll('#quote-blocks .quote-block');
+  blocks.forEach(function(el, idx) {
+    var lab = el.querySelector('.quote-block-label');
+    if (lab) lab.textContent = 'Quotation ' + (idx + 1);
+    var btn = el.querySelector('.btn-quote-remove');
+    if (btn) btn.disabled = blocks.length <= 1;
+  });
+}
+
+/**
+ * @param {boolean} [showToast] default true when invoked from toolbar
+ */
+function addQuoteBlockSection(showToast) {
+  var tpl = document.getElementById('tpl-quote-block');
+  var host = document.getElementById('quote-blocks');
+  if (!tpl || !host || !tpl.content) return;
+  quoteBlockCounter++;
+  var bid = quoteBlockCounter;
+  var frag = tpl.content.cloneNode(true);
+  var section = frag.querySelector('.quote-block');
+  if (!section) return;
+  section.setAttribute('data-quote-block-id', String(bid));
+  var tb = section.querySelector('.qb-tbody');
+  var gt = section.querySelector('.qb-grand-total');
+  if (tb) tb.id = 'items-body-' + bid;
+  if (gt) gt.id = 'grand-total-' + bid;
+  var rm = section.querySelector('.btn-quote-remove');
+  if (rm) {
+    rm.addEventListener('click', function() {
+      removeQuoteBlock(bid);
+    });
+  }
+  host.appendChild(frag);
+  setActiveQuoteBlockId(bid);
+  refreshQuoteBlockLabels();
+  calcGrand();
+  if (showToast !== false) {
+    toast('Quotation ' + host.querySelectorAll('.quote-block').length + ' added — use + Add Item for lines.', true);
+  }
+}
+
+function removeQuoteBlock(bid) {
+  var blocks = document.querySelectorAll('#quote-blocks .quote-block');
+  if (blocks.length <= 1) {
+    toast('At least one quotation table is required.', false);
+    return;
+  }
+  if (!confirm('Remove this quotation table and every line in it?')) return;
+  var el = document.querySelector('#quote-blocks .quote-block[data-quote-block-id="' + bid + '"]');
+  if (!el) return;
+  var wasActive = activeQuoteBlockId === bid;
+  el.remove();
+  refreshQuoteBlockLabels();
+  var remaining = document.querySelectorAll('#quote-blocks .quote-block');
+  if (remaining.length && wasActive) {
+    var next = remaining[0];
+    setActiveQuoteBlockId(parseInt(next.getAttribute('data-quote-block-id'), 10));
+  }
+  calcGrand();
 }
 
 function unlockApp() {
@@ -882,10 +1111,12 @@ function updateMeta() {
   }
 }
 
-function addRow(make, model, desc, basic, rate, qty) {
+function addRow(make, model, desc, basic, rate, qty, blockId) {
   rowId++;
   var id = rowId;
-  var tbody = document.getElementById('items-body');
+  var bid = blockId != null && !isNaN(Number(blockId)) ? Number(blockId) : activeQuoteBlockId;
+  var tbody = document.getElementById('items-body-' + bid);
+  if (!tbody) return;
   var tr = document.createElement('tr');
   tr.id = 'row-' + id;
 
@@ -972,14 +1203,18 @@ function calcRow(id) {
 }
 
 function calcGrand() {
-  var grand = 0;
-  document.querySelectorAll('#items-body tr').forEach(function(row) {
-    var rEl = row.querySelector('[data-field="rate"]');
-    var qEl = row.querySelector('[data-field="qty"]');
-    if (!rEl || !qEl) return;
-    grand += (parseFloat(rEl.value) || 0) * (parseFloat(qEl.value) || 1);
+  document.querySelectorAll('#quote-blocks [id^="items-body-"]').forEach(function(tbody) {
+    var bid = tbody.id.replace(/^items-body-/, '');
+    var grand = 0;
+    tbody.querySelectorAll('tr').forEach(function(row) {
+      var rEl = row.querySelector('[data-field="rate"]');
+      var qEl = row.querySelector('[data-field="qty"]');
+      if (!rEl || !qEl) return;
+      grand += (parseFloat(rEl.value) || 0) * (parseFloat(qEl.value) || 1);
+    });
+    var gt = document.getElementById('grand-total-' + bid);
+    if (gt) gt.textContent = fmt(grand);
   });
-  document.getElementById('grand-total').textContent = fmt(grand);
 }
 
 function deleteRow(id) {
@@ -989,15 +1224,21 @@ function deleteRow(id) {
 }
 
 function renumber() {
-  document.querySelectorAll('#items-body tr').forEach(function(r, i) {
-    r.querySelector('td:first-child').textContent = i + 1;
+  document.querySelectorAll('#quote-blocks [id^="items-body-"]').forEach(function(tbody) {
+    tbody.querySelectorAll('tr').forEach(function(r, i) {
+      var td = r.querySelector('td:first-child');
+      if (td) td.textContent = i + 1;
+    });
   });
 }
 
 function clearAll() {
-  if (!confirm('Reset form and clear all rows?')) return;
-  document.getElementById('items-body').innerHTML = '';
+  if (!confirm('Reset client fields, terms, and all quotation tables to a single default table?')) return;
+  var qb = document.getElementById('quote-blocks');
+  if (qb) qb.innerHTML = '';
+  quoteBlockCounter = 0;
   rowId = 0;
+  addQuoteBlockSection(false);
   ['cl-name','cl-place','q-subject'].forEach(function(id) {
     document.getElementById(id).value = '';
   });
@@ -1006,7 +1247,8 @@ function clearAll() {
   document.getElementById('q-date').value = new Date().toISOString().split('T')[0];
   updateMeta();
   updateTerms();
-  calcGrand();
+  addRow('Voltas', '185 V Vertis Emerald', '1.5 Ton 5 Star Inverter', 33050.84, 39000, 1);
+  addRow('Voltas', '183 V CAW', '1.5 Ton 3 Star Inverter', 25000, 29500, 1);
 }
 
 function sanitizeShareFilename(base) {
@@ -1016,7 +1258,8 @@ function sanitizeShareFilename(base) {
 /** Injected only into html2canvas’ cloned document — forces A4/desktop layout regardless of physical phone width. */
 var PDF_CAPTURE_CLONE_CSS = [
   '#page-wrapper{padding:1.25rem!important;overflow:visible!important;min-width:820px!important}',
-  '#quotation-page{width:794px!important;max-width:794px!important;min-width:794px!important;min-height:1123px!important;height:auto!important;padding:248px 62px 58px!important;box-sizing:border-box!important;background-size:794px 1123px!important;background-repeat:repeat-y!important}',
+  '#quotation-page{width:794px!important;max-width:794px!important;min-width:794px!important;min-height:1123px!important;height:auto!important;padding:0!important;box-sizing:border-box!important;background-size:794px 1123px!important;background-repeat:repeat-y!important}',
+  '#quotation-page-inner{padding:248px 62px 58px!important;box-sizing:border-box!important;min-height:1123px!important;-webkit-box-decoration-break:clone!important;box-decoration-break:clone!important}',
   '.items-table-wrap{overflow-x:visible!important}.items-table{min-width:666px!important;table-layout:fixed!important}',
   '.items-table tbody td input[type=number]{min-height:28px!important;line-height:normal!important;padding:8px 4px 8px 0!important;box-sizing:border-box!important;overflow:visible!important;-webkit-appearance:none!important;appearance:none!important}',
   '.items-table tbody td.r{padding-top:7px!important;padding-bottom:9px!important;vertical-align:middle!important}',
@@ -1169,31 +1412,40 @@ function buildShortShareSummary() {
   var subj = (document.getElementById('q-subject') || {}).value || '';
   subj = String(subj).trim().split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean).join(' ');
 
-  var total = (document.getElementById('grand-total') || {}).textContent || '₹0';
-
+  var totalsBits = [];
   var itemLines = [];
-  document.querySelectorAll('#items-body tr').forEach(function(row, idx) {
-    var qEl = row.querySelector('[data-field="qty"]');
-    if (!qEl) return;
-    var qty = parseFloat(qEl.value);
-    if (isNaN(qty)) qty = 0;
+  document.querySelectorAll('#quote-blocks .quote-block').forEach(function(block, bix) {
+    var bid = block.getAttribute('data-quote-block-id');
+    var qn = bix + 1;
+    var gt = document.getElementById('grand-total-' + bid);
+    totalsBits.push('Q' + qn + ' ' + (gt ? gt.textContent.trim() : '₹0'));
+    var tbody = block.querySelector('[id^="items-body-"]');
+    if (!tbody) return;
+    tbody.querySelectorAll('tr').forEach(function(row, idx) {
+      var qEl = row.querySelector('[data-field="qty"]');
+      if (!qEl) return;
+      var qty = parseFloat(qEl.value);
+      if (isNaN(qty)) qty = 0;
 
-    var make = String((row.querySelector('[data-field="make"]') || {}).textContent || '').trim();
-    var model = String((row.querySelector('[data-field="model"]') || {}).textContent || '').trim();
-    var desc = String((row.querySelector('[data-field="desc"]') || {}).textContent || '').trim();
-    var label = make || model ? [make, model].filter(Boolean).join(' ').trim() : '';
-    if (!label && desc) {
-      label = desc.length > 48 ? desc.slice(0, 45) + '…' : desc;
-    }
-    if (!label) label = 'Item ' + (idx + 1);
+      var make = String((row.querySelector('[data-field="make"]') || {}).textContent || '').trim();
+      var model = String((row.querySelector('[data-field="model"]') || {}).textContent || '').trim();
+      var desc = String((row.querySelector('[data-field="desc"]') || {}).textContent || '').trim();
+      var label = make || model ? [make, model].filter(Boolean).join(' ').trim() : '';
+      if (!label && desc) {
+        label = desc.length > 48 ? desc.slice(0, 45) + '…' : desc;
+      }
+      if (!label) label = 'Item ' + (idx + 1);
 
-    var rt = '';
-    var totCell = row.querySelector('td.r.bold[id^="rowtotal-"]');
-    if (totCell && totCell.textContent) rt = ' — ' + totCell.textContent.trim();
+      var rt = '';
+      var totCell = row.querySelector('td.r.bold[id^="rowtotal-"]');
+      if (totCell && totCell.textContent) rt = ' — ' + totCell.textContent.trim();
 
-    var qtyStr = (qty % 1 === 0) ? String(Math.round(qty)) : String(qty);
-    itemLines.push('• ' + label + ' — Qty ' + qtyStr + rt);
+      var qtyStr = (qty % 1 === 0) ? String(Math.round(qty)) : String(qty);
+      itemLines.push('Q' + qn + ' • ' + label + ' — Qty ' + qtyStr + rt);
+    });
   });
+
+  var total = totalsBits.length ? totalsBits.join(' | ') : '₹0';
 
   var out = [];
   out.push('Shivatronics quotation');
@@ -1208,7 +1460,7 @@ function buildShortShareSummary() {
     if (itemLines.length > maxLines) out.push('… +' + (itemLines.length - maxLines) + ' more lines');
     out.push('');
   }
-  out.push('Grand total (incl. GST): ' + total);
+  out.push('Totals (incl. GST): ' + total);
   return out.join('\n');
 }
 

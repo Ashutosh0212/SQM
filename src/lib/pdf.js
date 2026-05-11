@@ -161,9 +161,10 @@ export async function buildQuotationPdfBlob(page) {
       scrollX: 0,
       scrollY: 0,
       onclone(clonedDoc) {
+        const letterheadPath = `${import.meta.env.BASE_URL}letterhead-a4.png`;
         clonedDoc.documentElement.style.setProperty(
           '--quot-letterhead',
-          `url(${import.meta.env.BASE_URL}Shivatronics letterhead A4.png)`
+          `url("${letterheadPath}")`
         );
         injectCloneCaptureStyles(clonedDoc);
         prepareQuotDocCloneForPdf(clonedDoc);

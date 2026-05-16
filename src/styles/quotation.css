@@ -259,13 +259,17 @@ body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
 .items-table tbody td input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; }
 .items-table tbody td input[type="number"]:focus { background:rgba(219,234,254,0.45); border-radius:2px; }
 
-/* Contenteditable divs for text columns (wrap naturally) */
+/* Text columns (make / model / description) — wrap to next line in-cell */
 .cell-text {
   width:100%; border:none; background:transparent; display:block;
   font-family:'Inter',sans-serif; font-size:10px; color:#0f172a;
   outline:none; padding:0; min-height:14px;
   white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere;
   cursor:text; line-height:1.4;
+  resize:none; overflow:hidden;
+}
+.items-table tbody td textarea.cell-text {
+  box-sizing:border-box;
 }
 .cell-text:focus { background:rgba(219,234,254,0.45); border-radius:2px; }
 .cell-text:empty:before { content:attr(data-placeholder); color:#94a3b8; pointer-events:none; }

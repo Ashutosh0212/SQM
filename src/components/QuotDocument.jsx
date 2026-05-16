@@ -1,10 +1,40 @@
-import { forwardRef, useMemo } from 'react';
+import { forwardRef, useLayoutEffect, useMemo, useRef } from 'react';
 import { blockTotal, fmt, rowLineTotal } from '../lib/money.js';
 import { fmtDisplayDate, parseTermsBullets } from '../lib/share.js';
 
 const SEAL_SRC = encodeURI(
   `${import.meta.env.BASE_URL}Shiavtronics sign and seal.png`
 );
+
+function resizeCellTextarea(el) {
+  if (!el) return;
+  el.style.height = '0';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
+function CellTextarea({ value, placeholder, onChange, onFocus }) {
+  const ref = useRef(null);
+
+  useLayoutEffect(() => {
+    resizeCellTextarea(ref.current);
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      className="cell-text"
+      rows={1}
+      spellCheck
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => {
+        onChange(e.target.value);
+        resizeCellTextarea(e.target);
+      }}
+      onFocus={onFocus}
+    />
+  );
+}
 
 export const QuotDocument = forwardRef(function QuotDocument({ state, dispatch }, ref) {
   const bullets = useMemo(
@@ -134,10 +164,7 @@ export const QuotDocument = forwardRef(function QuotDocument({ state, dispatch }
                             </td>
                             {['make', 'model', 'desc'].map((field) => (
                               <td key={field} className="wrap">
-                                <input
-                                  type="text"
-                                  className="cell-text"
-                                  style={{width:'100%'}}
+                                <CellTextarea
                                   placeholder={
                                     field === 'make'
                                       ? 'Voltas'
@@ -146,13 +173,19 @@ export const QuotDocument = forwardRef(function QuotDocument({ state, dispatch }
                                         : '1.5 Ton 5 Star Inverter'
                                   }
                                   value={row[field]}
-                                  onChange={(e) =>
+                                  onChange={(value) =>
                                     dispatch({
                                       type: 'UPDATE_ROW',
                                       blockId: block.id,
                                       rowId: row.id,
                                       field,
-                                      value: e.target.value,
+                                      value,
+                                    })
+                                  }
+                                  onFocus={() =>
+                                    dispatch({
+                                      type: 'SET_ACTIVE_BLOCK',
+                                      blockId: block.id,
                                     })
                                   }
                                 />

@@ -1,6 +1,6 @@
 ﻿
 * { box-sizing:border-box; margin:0; padding:0; }
-body { font-family:'Inter',sans-serif; background:#c8d3de; min-height:100vh; }
+body { font-family:'Roboto','Inter',sans-serif; background:#fff; min-height:100vh; }
 
 /* â”€â”€ EDITOR BAR â”€â”€ */
 .editor-panel {
@@ -552,7 +552,8 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
   #login-screen { display: none !important; }
   .editor-panel,
   .panel-left,
-  .panel-right-toolbar { display: none !important; }
+  .panel-right-toolbar,
+  .app-doc-tabs { display: none !important; }
   .app-shell {
     display: block !important;
     height: auto !important;
@@ -571,18 +572,30 @@ html.pdf-capture-a4 .items-table tbody td input[type="number"] {
     min-height: 0 !important;
   }
   #page-wrapper { padding:0; justify-content:flex-start !important; }
-  #quotation-page {
+  body,
+  .panel-right,
+  .live-preview-wrap {
+    background: #fff !important;
+  }
+  #quotation-page,
+  #po-page {
     box-shadow: none !important;
     border-radius: 0 !important;
     width: 210mm !important;
     height: auto !important;
     overflow: visible !important;
+    box-sizing: border-box !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  #quotation-page {
     background-size: 210mm 297mm !important;
     background-repeat: repeat-y !important;
     padding: 0 !important;
-    box-sizing: border-box !important;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+  }
+  #po-page {
+    padding: 12mm 14mm !important;
+    background: #fff !important;
   }
   #quotation-page-inner {
     padding-top: 65.6mm !important;

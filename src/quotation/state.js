@@ -138,6 +138,9 @@ export function quotationReducer(state, action) {
       return createInitialState();
     }
 
+    case 'LOAD':
+      return action.payload;
+
     default:
       return state;
   }

@@ -30,8 +30,9 @@ function injectCloneCaptureStyles(doc) {
  * html2canvas inconsistently renders form controls vs what you see when printing —
  * rasterize editable fields into plain markup for a stable screenshot.
  */
-function prepareQuotDocCloneForPdf(doc) {
-  const root = doc.getElementById('quotation-page');
+function prepareDocCloneForPdf(doc) {
+  const root =
+    doc.getElementById('quotation-page') || doc.getElementById('po-page');
   if (!root) return;
 
   root.querySelectorAll('textarea').forEach((ta) => {
@@ -126,12 +127,14 @@ function restoreAncestorScrollHosts(saved) {
 }
 
 /** @param {HTMLElement | null} page */
-export async function buildQuotationPdfBlob(page) {
+export async function buildDocumentPdfBlob(page, { mode = 'quotation' } = {}) {
   if (!page) throw new Error('pdf-lib-missing');
 
   const scrollSaved = saveAndResetAncestorScrollHosts(page);
   const rootEl = document.documentElement;
-  rootEl.classList.add('pdf-capture', 'pdf-capture-a4');
+  const captureClass =
+    mode === 'po' ? 'pdf-capture-po' : 'pdf-capture-a4';
+  rootEl.classList.add('pdf-capture', captureClass);
   window.scrollTo(0, 0);
 
   try {
@@ -161,13 +164,15 @@ export async function buildQuotationPdfBlob(page) {
       scrollX: 0,
       scrollY: 0,
       onclone(clonedDoc) {
-        const letterheadPath = `${import.meta.env.BASE_URL}letterhead-a4.png`;
-        clonedDoc.documentElement.style.setProperty(
-          '--quot-letterhead',
-          `url("${letterheadPath}")`
-        );
-        injectCloneCaptureStyles(clonedDoc);
-        prepareQuotDocCloneForPdf(clonedDoc);
+        if (mode === 'quotation') {
+          const letterheadPath = `${import.meta.env.BASE_URL}letterhead-a4.png`;
+          clonedDoc.documentElement.style.setProperty(
+            '--quot-letterhead',
+            `url("${letterheadPath}")`
+          );
+          injectCloneCaptureStyles(clonedDoc);
+        }
+        prepareDocCloneForPdf(clonedDoc);
       },
     });
 
@@ -203,7 +208,17 @@ export async function buildQuotationPdfBlob(page) {
 
     return pdf.output('blob');
   } finally {
-    rootEl.classList.remove('pdf-capture', 'pdf-capture-a4');
+    rootEl.classList.remove('pdf-capture', 'pdf-capture-a4', 'pdf-capture-po');
     restoreAncestorScrollHosts(scrollSaved);
   }
+}
+
+/** @param {HTMLElement | null} page */
+export async function buildQuotationPdfBlob(page) {
+  return buildDocumentPdfBlob(page, { mode: 'quotation' });
+}
+
+/** @param {HTMLElement | null} page */
+export async function buildPoPdfBlob(page) {
+  return buildDocumentPdfBlob(page, { mode: 'po' });
 }

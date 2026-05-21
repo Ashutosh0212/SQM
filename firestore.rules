@@ -1,0 +1,127 @@
+rules_version = '2';
+
+/**
+ * Staystock + SQM (shared project). Do not remove existing matchers.
+ * SQM block uses the same isAdmin() staff gate as the main app.
+ *
+ * Append only the SQM section if you cannot replace this file — see
+ * firestore.rules.sqm-snippet.txt
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+          || request.auth.token.email == 'admin@gmail.com'
+        );
+    }
+
+    function isCustomer(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    match /{path=**}/quotations/{quotationId} {
+      allow read: if isAdmin();
+    }
+
+    match /admin_users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.auth.token.email == 'admin@gmail.com';
+      allow update: if signedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    match /{path=**}/messages/{messageId} {
+      allow read: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isCustomer(userId) || isAdmin();
+      allow create, update, delete: if isCustomer(userId);
+
+      match /projects/{projectId} {
+        allow read: if isCustomer(userId) || isAdmin();
+        allow write: if isCustomer(userId);
+      }
+
+      match /quotations/{quotationId} {
+        allow read: if isCustomer(userId) || isAdmin();
+        allow create, delete: if isCustomer(userId);
+        allow update: if isCustomer(userId) || isAdmin();
+
+        match /messages/{messageId} {
+          allow read: if isCustomer(userId) || isAdmin();
+          allow create: if (isCustomer(userId)
+              && request.resource.data.sender == 'customer'
+              && request.resource.data.text is string
+              && request.resource.data.text.size() > 0
+              && request.resource.data.text.size() <= 2000)
+            || (isAdmin()
+              && request.resource.data.sender == 'staff'
+              && request.resource.data.text is string
+              && request.resource.data.text.size() > 0
+              && request.resource.data.text.size() <= 2000);
+          allow update, delete: if false;
+        }
+      }
+
+      match /orders/{orderId} {
+        allow read: if isCustomer(userId) || isAdmin();
+        allow write: if isCustomer(userId) || isAdmin();
+      }
+
+      match /saved/{savedId} {
+        allow read, write: if isCustomer(userId);
+      }
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /brands/{brandId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /app_config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /admin_notifications/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /counters/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    /* ── SQM app (Shivatronics quotation / PO) — add-only collections ── */
+    match /SQM_clients/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /SQM_quotations/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /SQM_purchase_orders/{docId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

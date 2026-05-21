@@ -1,0 +1,247 @@
+/**
+ * Google Material-inspired shell theme (white surfaces, #1a73e8 primary).
+ */
+
+:root {
+  --g-blue: #1a73e8;
+  --g-blue-hover: #1765cc;
+  --g-blue-light: #e8f0fe;
+  --g-green: #34a853;
+  --g-green-hover: #2d8e47;
+  --g-red: #d93025;
+  --g-red-hover: #b3261e;
+  --g-grey-50: #f8f9fa;
+  --g-grey-100: #f1f3f4;
+  --g-grey-200: #e8eaed;
+  --g-grey-300: #dadce0;
+  --g-grey-600: #5f6368;
+  --g-grey-800: #3c4043;
+  --g-grey-900: #202124;
+  --g-shadow-1: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+}
+
+html,
+body {
+  font-family: 'Roboto', 'Inter', system-ui, sans-serif;
+  background: #fff;
+  color: var(--g-grey-900);
+}
+
+.app-shell {
+  background: #fff;
+}
+
+.panel-right {
+  background: var(--g-grey-50);
+}
+
+.panel-right-toolbar {
+  background: #fff;
+  color: var(--g-grey-800);
+  border-bottom: 1px solid var(--g-grey-300);
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.08);
+}
+
+.app-doc-tabs {
+  background: #fff;
+  border-bottom: 1px solid var(--g-grey-300);
+}
+
+.app-doc-tab {
+  color: var(--g-grey-600);
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+}
+
+.app-doc-tab:hover {
+  color: var(--g-blue);
+  background: var(--g-blue-light);
+}
+
+.app-doc-tab.is-active {
+  color: var(--g-blue);
+  background: #fff;
+  border-bottom-color: var(--g-blue);
+  font-weight: 600;
+}
+
+/* Editor sidebar — white */
+.editor-panel,
+.editor-panel.sidebar-editor {
+  background: #fff;
+  color: var(--g-grey-900);
+  border-bottom: none;
+  border-right: 1px solid var(--g-grey-300);
+  box-shadow: none;
+}
+
+.editor-panel h1 {
+  color: var(--g-blue);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.ctrl-group label {
+  color: var(--g-grey-600);
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.ctrl-group input,
+.ctrl-group textarea,
+.sqm-cloud-select {
+  background: #fff;
+  border: 1px solid var(--g-grey-300);
+  color: var(--g-grey-900);
+  border-radius: 8px;
+}
+
+.ctrl-group input:focus,
+.ctrl-group textarea:focus,
+.sqm-cloud-select:focus {
+  border-color: var(--g-blue);
+  box-shadow: 0 0 0 1px var(--g-blue);
+  outline: none;
+}
+
+.editor-row-hint,
+.terms-editor-hint {
+  color: var(--g-grey-600);
+}
+
+.btn {
+  border-radius: 8px;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.btn-add,
+.btn-login {
+  background: var(--g-blue);
+  color: #fff;
+}
+
+.btn-add:hover,
+.btn-login:hover {
+  background: var(--g-blue-hover);
+}
+
+.btn-share {
+  background: var(--g-green);
+  color: #fff;
+}
+
+.btn-share:hover {
+  background: var(--g-green-hover);
+}
+
+.btn-print {
+  background: #fff;
+  color: var(--g-blue);
+  border: 1px solid var(--g-grey-300);
+}
+
+.btn-print:hover {
+  background: var(--g-grey-100);
+}
+
+.btn-clear {
+  background: #fff;
+  color: var(--g-red);
+  border: 1px solid var(--g-grey-300);
+}
+
+.btn-clear:hover {
+  background: #fce8e6;
+}
+
+.sqm-cloud-panel {
+  background: var(--g-grey-50);
+  border: 1px solid var(--g-grey-300);
+  border-radius: 8px;
+}
+
+.sqm-cloud-title {
+  color: var(--g-blue);
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 0.75rem;
+}
+
+.sqm-cloud-hint,
+.sqm-cloud-hint code,
+.sqm-cloud-select-label,
+.sqm-cloud-id {
+  color: var(--g-grey-600);
+}
+
+/* Login */
+#login-screen {
+  background: var(--g-grey-50);
+}
+
+.login-card {
+  background: #fff;
+  border: 1px solid var(--g-grey-300);
+  border-radius: 12px;
+  box-shadow: var(--g-shadow-1);
+}
+
+.login-card h2 {
+  color: var(--g-grey-900);
+  font-weight: 500;
+}
+
+.login-sub,
+.login-note {
+  color: var(--g-grey-600);
+}
+
+#login-form label {
+  color: var(--g-grey-600);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.75rem;
+}
+
+#login-form input[type='text'],
+#login-form input[type='password'] {
+  border: 1px solid var(--g-grey-300);
+  border-radius: 8px;
+  background: #fff;
+}
+
+#login-form input:focus {
+  border-color: var(--g-blue);
+  box-shadow: 0 0 0 1px var(--g-blue);
+}
+
+#login-err {
+  color: var(--g-red);
+}
+
+/* Toast */
+#app-toast {
+  background: var(--g-grey-800);
+  border-radius: 8px;
+}
+
+#app-toast.ok {
+  background: var(--g-green);
+}
+
+#app-toast.err {
+  background: var(--g-red);
+}
+
+.live-preview-wrap {
+  background: var(--g-grey-100);
+}

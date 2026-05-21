@@ -11,11 +11,11 @@ body {
 
 .app-shell {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: stretch;
   height: 100%;
   min-height: 0;
-  background: #c8d3de;
+  background: #fff;
 }
 
 .panel-left {
@@ -26,6 +26,38 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.app-doc-tabs {
+  display: flex;
+  flex-shrink: 0;
+  background: #0f172a;
+  border-bottom: 2px solid #334155;
+}
+
+.app-doc-tab {
+  flex: 1 1 50%;
+  padding: 0.55rem 0.5rem;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-doc-tab:hover {
+  color: #e2e8f0;
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.app-doc-tab.is-active {
+  color: #fff;
+  background: #2563eb;
 }
 
 .panel-right {
@@ -95,6 +127,79 @@ body {
 
 #app-toast.err {
   background: #b91c1c;
+}
+
+.sqm-cloud-panel {
+  flex: 1 1 100%;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.5rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.sqm-cloud-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #93c5fd;
+  margin-bottom: 0.35rem;
+}
+
+.sqm-cloud-hint {
+  font-size: 0.6rem;
+  color: #94a3b8;
+  line-height: 1.4;
+  margin: 0 0 0.5rem;
+}
+
+.sqm-cloud-hint code {
+  font-size: 0.58rem;
+  color: #cbd5e1;
+}
+
+.sqm-cloud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.sqm-cloud-actions .btn {
+  font-size: 0.68rem;
+  padding: 0.35rem 0.55rem;
+  min-height: 0;
+}
+
+.sqm-cloud-select-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.sqm-cloud-select {
+  width: 100%;
+  background: #243447;
+  border: 1.5px solid #334155;
+  border-radius: 5px;
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.72rem;
+  padding: 0.35rem 0.45rem;
+}
+
+.sqm-cloud-id {
+  font-size: 0.58rem;
+  color: #64748b;
+  margin: 0.4rem 0 0;
+  word-break: break-all;
 }
 
 @media (max-width: 900px) {

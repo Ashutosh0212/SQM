@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 import './styles/quotation.css';
+import './styles/purchase-order.css';
+import './styles/google-theme.css';
+import './styles/crm.css';
 
 /** Letterhead in public/ — use ASCII filename (no spaces) for reliable GitHub Pages + CSS. */
 const letterheadPath = `${import.meta.env.BASE_URL}letterhead-a4.png`;

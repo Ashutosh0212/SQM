@@ -1,3 +1,6 @@
+/** Firebase staff email — must match isAdmin() bootstrap in firestore.rules */
+export const FIREBASE_STAFF_EMAIL = 'admin@gmail.com';
+
 export const LOGIN_SESSION_KEY = 'shivatronics_quote_auth_ok';
 export const LOGIN_SALT = 'shivatronics-quotation-login-v2026';
 export const EXPECTED_LOGIN_SHA256 =

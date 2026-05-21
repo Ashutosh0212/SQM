@@ -1,0 +1,12 @@
+    /* ── SQM app — paste inside match /databases/{database}/documents { ... } ── */
+    match /SQM_clients/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /SQM_quotations/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /SQM_purchase_orders/{docId} {
+      allow read, write: if isAdmin();
+    }

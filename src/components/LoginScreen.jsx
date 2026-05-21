@@ -1,33 +1,32 @@
 import { useState } from 'react';
-import {
-  EXPECTED_LOGIN_SHA256,
-  hashCredential,
-  LOGIN_SESSION_KEY,
-} from '../lib/auth.js';
+import { staffSignIn } from '../lib/firebaseAuth.js';
 
-export function LoginScreen({ onAuthenticated }) {
+export function LoginScreen() {
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
 
   async function onSubmit(ev) {
     ev.preventDefault();
     setErr('');
+    setBusy(true);
     try {
-      const hex = await hashCredential(user, pass);
-      if (hex === EXPECTED_LOGIN_SHA256) {
-        try {
-          sessionStorage.setItem(LOGIN_SESSION_KEY, '1');
-        } catch {
-          /* ignore */
-        }
-        onAuthenticated();
-      } else {
-        setErr('Invalid user ID or password.');
-      }
+      await staffSignIn(user, pass);
     } catch (e) {
-      setErr('Sign-in unavailable in this browser.');
       console.error(e);
+      const code = e?.code || '';
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+        setErr('Invalid user ID or password.');
+      } else if (code === 'auth/too-many-requests') {
+        setErr('Too many attempts. Try again later.');
+      } else if (code === 'auth/network-request-failed') {
+        setErr('Network error. Check your connection.');
+      } else {
+        setErr(e?.message || 'Sign-in failed.');
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -35,7 +34,7 @@ export function LoginScreen({ onAuthenticated }) {
     <div id="login-screen">
       <div className="login-card">
         <h2>Shivatronics</h2>
-        <p className="login-sub">Sign in to open the quotation builder.</p>
+        <p className="login-sub">Sign in to open the quotation and purchase order builder.</p>
         <form id="login-form" onSubmit={onSubmit}>
           <label>
             User ID
@@ -62,13 +61,18 @@ export function LoginScreen({ onAuthenticated }) {
             />
           </label>
           <p id="login-err">{err}</p>
-          <button type="submit" className="btn btn-submit btn-login">
-            Sign in
+          <button
+            type="submit"
+            className="btn btn-submit btn-login"
+            disabled={busy}
+          >
+            {busy ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
         <p className="login-note">
-          Purely client-side unlock: use a strong password and replace the
-          login hash before publishing.
+          Cloud save uses your existing Firebase staff account. User ID must be{' '}
+          <strong>admin</strong>; use the same password as in Firebase Authentication
+          for <strong>admin@gmail.com</strong>.
         </p>
       </div>
     </div>

@@ -1,4 +1,4 @@
-export function EditorSidebar({ meta, dispatch, onReset, onSignOut }) {
+export function EditorSidebar({ meta, dispatch, onReset }) {
   return (
     <div className="editor-panel sidebar-editor">
       <h1>Shivatronics — Quotation Builder</h1>
@@ -87,9 +87,6 @@ export function EditorSidebar({ meta, dispatch, onReset, onSignOut }) {
         </button>
         <button type="button" className="btn btn-clear" onClick={onReset}>
           &#10005; Reset
-        </button>
-        <button type="button" className="btn btn-print" onClick={onSignOut}>
-          Sign out
         </button>
       </div>
     </div>
